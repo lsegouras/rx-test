@@ -12,13 +12,14 @@ Extra points:
 
 - POST /orders (§11.1): attempted. The validation lives in the Module and is covered by Jest tests; there is no UI form.
 - Vitest component test (§11.2): attempted. It covers the empty state and proves that the buttons follow `allowed_actions`, not the status.
-- Playwright end-to-end (§11.3): not attempted.
+- Playwright end-to-end (§11.3): attempted. One happy path; `npm run test:e2e` reseeds the database and boots both apps through Playwright's `webServer`.
 
 Layout deviations from §14:
 
 - The API layer folders are named after the §9.1 layers: `endpoint/`, `module/`, `repository/`, `schema/`.
 - Each test file sits next to the module file it tests. A rule and its test are then side by side, which is where I want them during the live change.
 - `docs/` holds the take-home brief, and `ai-logs/00-planning/` holds the planning prompt output and the plan. They are part of the AI evidence.
+- `e2e/` and `playwright.config.ts` sit at the root, because the end-to-end test drives both apps.
 
 ## Layers
 

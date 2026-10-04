@@ -12,9 +12,11 @@
   "scripts": {
     "dev": "concurrently -n api,web \"npm run dev -w api\" \"npm run dev -w web\"",
     "db:setup": "npm run db:setup -w api",
-    "test": "npm test -w api"
+    "test": "npm test -w api",
+    "test:e2e": "npm run db:setup && playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "^10.0.5"
   }
 }

@@ -43,6 +43,13 @@ npm test -w web
 
 One Vitest component test of the queue table (extra): the empty state, and buttons that follow `allowed_actions`.
 
+```bash
+npx playwright install chromium   # once
+npm run test:e2e
+```
+
+One Playwright end-to-end test (extra): the queue shows a seeded order, the expeditor starts it, and the status changes on screen. PostgreSQL must be up. The command reseeds the database, then starts the API and the web app itself, or reuses them if they are already running. Run `npm run db:setup` afterwards to restore the demo data.
+
 ## API
 
 | Method | Path | Behavior |
