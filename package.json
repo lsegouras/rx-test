@@ -1,0 +1,15 @@
+{
+  "name": "kitchen-display-queue",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "api"
+  ],
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "db:setup": "npm run db:setup -w api",
+    "test": "npm test -w api"
+  }
+}
