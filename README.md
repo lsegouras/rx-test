@@ -37,6 +37,12 @@ npm test
 
 The Jest tests cover the business rules in `api/src/module`. They use their own fixtures and a frozen clock, and they run without PostgreSQL.
 
+```bash
+npm test -w web
+```
+
+One Vitest component test of the queue table (extra): the empty state, and buttons that follow `allowed_actions`.
+
 ## API
 
 | Method | Path | Behavior |

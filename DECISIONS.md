@@ -11,7 +11,7 @@ I kept the result small on purpose. I left out a button for `pickup` on the scre
 Extra points:
 
 - POST /orders (§11.1): attempted. The validation lives in the Module and is covered by Jest tests; there is no UI form.
-- Vitest component test (§11.2): not attempted.
+- Vitest component test (§11.2): attempted. It covers the empty state and proves that the buttons follow `allowed_actions`, not the status.
 - Playwright end-to-end (§11.3): not attempted.
 
 Layout deviations from §14:
