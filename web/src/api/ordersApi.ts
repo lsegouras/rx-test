@@ -22,7 +22,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await fetch(path, init).catch(() => {
+    // The API could not be reached at all.
+    throw new ApiError(GENERIC_MESSAGE);
+  });
   if (response.ok) return (await response.json()) as T;
 
   const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
