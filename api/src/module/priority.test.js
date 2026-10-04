@@ -80,27 +80,27 @@ describe('score components (PDF §5.1)', () => {
   });
 
   test.each([
-    ['9 min 50 s', secondsAgo(9 * 60 + 50), 0],
-    ['10 min 00 s', minutesAgo(10), 5],
-    ['35 min', minutesAgo(35), 15],
-    ['80 min', minutesAgo(80), 40],
-    ['200 min (cap)', minutesAgo(200), 40],
-    ['-30 s (placed_at ahead of now by clock skew)', secondsFromNow(30), 0],
-  ])('waiting %s adds %i points', (_label, placed_at, points) => {
+    ['9 min 50 s', 0, secondsAgo(9 * 60 + 50)],
+    ['10 min 00 s', 5, minutesAgo(10)],
+    ['35 min', 15, minutesAgo(35)],
+    ['80 min', 40, minutesAgo(80)],
+    ['200 min (cap)', 40, minutesAgo(200)],
+    ['-30 s (placed_at ahead of now by clock skew)', 0, secondsFromNow(30)],
+  ])('waiting %s adds %i points', (_label, points, placed_at) => {
     expect(pointsAdded({ placed_at })).toBe(points);
   });
 
   test.each([
-    ['+20 min', minutesFromNow(20), 25],
-    ['+30:00', minutesFromNow(30), 25],
-    ['+30:30', minutesFromNow(30.5), 15],
-    ['+45 min', minutesFromNow(45), 15],
-    ['+60:00', minutesFromNow(60), 15],
-    ['+60:01', secondsFromNow(60 * 60 + 1), 0],
-    ['+90 min', minutesFromNow(90), 0],
-    ['null', null, 0],
-    ['overdue by 10 min', minutesAgo(10), 25],
-  ])('promised_at %s adds %i points', (_label, promised_at, points) => {
+    ['+20 min', 25, minutesFromNow(20)],
+    ['+30:00', 25, minutesFromNow(30)],
+    ['+30:30', 15, minutesFromNow(30.5)],
+    ['+45 min', 15, minutesFromNow(45)],
+    ['+60:00', 15, minutesFromNow(60)],
+    ['+60:01', 0, secondsFromNow(60 * 60 + 1)],
+    ['+90 min', 0, minutesFromNow(90)],
+    ['null', 0, null],
+    ['overdue by 10 min', 25, minutesAgo(10)],
+  ])('promised_at %s adds %i points', (_label, points, promised_at) => {
     expect(pointsAdded({ promised_at })).toBe(points);
   });
 
@@ -109,12 +109,12 @@ describe('score components (PDF §5.1)', () => {
   });
 
   test.each([
-    ['14 min', [{ prep_time_minutes: 14, quantity: 1 }], 0],
-    ['15 min', [{ prep_time_minutes: 15, quantity: 1 }], 5],
-    ['50 min', [{ prep_time_minutes: 20, quantity: 2 }, { prep_time_minutes: 10, quantity: 1 }], 15],
-    ['60 min', [{ prep_time_minutes: 20, quantity: 3 }], 20],
-    ['84 min (cap)', [{ prep_time_minutes: 12, quantity: 7 }], 20],
-  ])('total prep of %s adds %i points', (_label, items, points) => {
+    ['14 min', 0, [{ prep_time_minutes: 14, quantity: 1 }]],
+    ['15 min', 5, [{ prep_time_minutes: 15, quantity: 1 }]],
+    ['50 min', 15, [{ prep_time_minutes: 20, quantity: 2 }, { prep_time_minutes: 10, quantity: 1 }]],
+    ['60 min', 20, [{ prep_time_minutes: 20, quantity: 3 }]],
+    ['84 min (cap)', 20, [{ prep_time_minutes: 12, quantity: 7 }]],
+  ])('total prep of %s adds %i points', (_label, points, items) => {
     expect(pointsAdded({ items })).toBe(points);
   });
 
