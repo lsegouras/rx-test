@@ -3,13 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "api"
+    "api",
+    "web"
   ],
   "engines": {
     "node": "22.x"
   },
   "scripts": {
+    "dev": "concurrently -n api,web \"npm run dev -w api\" \"npm run dev -w web\"",
     "db:setup": "npm run db:setup -w api",
     "test": "npm test -w api"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }
