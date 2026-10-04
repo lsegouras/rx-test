@@ -5,7 +5,9 @@
   "type": "commonjs",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "test": "jest"
+    "test": "jest",
+    "db:migrate": "sequelize-cli db:migrate",
+    "db:setup": "sequelize-cli db:migrate && sequelize-cli db:seed:all"
   },
   "dependencies": {
     "express": "^5.2.1",

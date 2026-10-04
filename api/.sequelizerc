@@ -1,0 +1,10 @@
+// .sequelizerc | Layer: Schema (sequelize-cli entry point)
+// Tells sequelize-cli where the Schema layer keeps its config, models, migrations and seeders.
+const path = require('path');
+
+module.exports = {
+  config: path.resolve(__dirname, 'src/schema/sequelize.config.js'),
+  'models-path': path.resolve(__dirname, 'src/schema/models'),
+  'migrations-path': path.resolve(__dirname, 'src/schema/migrations'),
+  'seeders-path': path.resolve(__dirname, 'src/schema/seeders'),
+};
