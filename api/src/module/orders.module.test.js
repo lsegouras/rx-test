@@ -6,7 +6,7 @@
  */
 const { createOrdersModule } = require('./orders.module');
 const { computePriority, compareQueue } = require('./priority');
-const { ACTIVE_QUEUE_STATUSES } = require('./status.rules');
+const { ACTIVE_QUEUE_STATUSES, INITIAL_STATUS } = require('./status.rules');
 const { ORDER_STATUSES, allowedActions } = require('./transitions');
 const { FROZEN_NOW, minutesAgo, minutesFromNow, fixedClock } = require('../testing/frozen-now');
 
@@ -24,6 +24,9 @@ const order = (overrides) => ({
   items: [SALMON],
   ...overrides,
 });
+
+/** Ids of the menu items the fake repository knows. */
+const MENU_ITEM_IDS = [1, 2, 3];
 
 /** One order per status, with different scores among the active ones. */
 const ONE_PER_STATUS = [
@@ -50,6 +53,12 @@ function fakeRepository(orders) {
       if (!row) return 0;
       row.status = to;
       return 1;
+    },
+    findMenuItemsByIds: async (ids) => MENU_ITEM_IDS.filter((id) => ids.includes(id)).map((id) => ({ id })),
+    createOrder: async (newOrder) => {
+      const row = { ...newOrder, id: rows.length + 1 };
+      rows.push(row);
+      return { id: row.id, status: row.status, placed_at: row.placed_at };
     },
   };
 }
@@ -190,5 +199,70 @@ describe('applyAction', () => {
     repository.updateStatusIfCurrent = async () => 0;
 
     await expect(ordersModule.applyAction(1, 'start')).rejects.toEqual(domainError('INVALID_TRANSITION'));
+  });
+});
+
+describe('createOrder', () => {
+  const payload = (overrides = {}) => ({
+    customer_name: 'Lia',
+    type: 'takeout',
+    items: [{ menu_item_id: 1, quantity: 2 }],
+    ...overrides,
+  });
+  const rejected = (ordersModule, body) =>
+    expect(ordersModule.createOrder(body)).rejects.toEqual(domainError('VALIDATION_ERROR'));
+
+  test.each([[[]], [undefined], ['1x pizza']])('items = %j is rejected with VALIDATION_ERROR', async (items) => {
+    const { ordersModule } = setup([]);
+
+    await rejected(ordersModule, payload({ items }));
+  });
+
+  test('an unknown menu_item_id is rejected with VALIDATION_ERROR', async () => {
+    const { ordersModule } = setup([]);
+
+    await rejected(ordersModule, payload({ items: [{ menu_item_id: 999, quantity: 1 }] }));
+  });
+
+  test.each([[0], [-1], [1.5], ['2']])('quantity %j is rejected with VALIDATION_ERROR', async (quantity) => {
+    const { ordersModule } = setup([]);
+
+    await rejected(ordersModule, payload({ items: [{ menu_item_id: 1, quantity }] }));
+  });
+
+  test.each([
+    ['an empty customer_name', { customer_name: '  ' }],
+    ['an unknown type', { type: 'banana' }],
+    ['a non-boolean is_vip', { is_vip: 'yes' }],
+    ['a promised_at that is not a timestamp', { promised_at: 'tomorrow' }],
+  ])('%s is rejected with VALIDATION_ERROR', async (_label, overrides) => {
+    const { ordersModule } = setup([]);
+
+    await rejected(ordersModule, payload(overrides));
+  });
+
+  test('a body that is not an object is rejected with VALIDATION_ERROR', async () => {
+    const { ordersModule } = setup([]);
+
+    await rejected(ordersModule, undefined);
+  });
+
+  test('a valid payload is stored with the initial status and placed_at = clock.now()', async () => {
+    const { ordersModule, repository } = setup([]);
+    const promised_at = minutesFromNow(40);
+
+    const created = await ordersModule.createOrder(payload({ promised_at: promised_at.toISOString() }));
+
+    expect(created).toEqual({ id: 1, status: INITIAL_STATUS, placed_at: FROZEN_NOW });
+    expect(repository.rows[0]).toEqual({
+      id: 1,
+      customer_name: 'Lia',
+      type: 'takeout',
+      is_vip: false,
+      status: INITIAL_STATUS,
+      placed_at: FROZEN_NOW,
+      promised_at,
+      items: [{ menu_item_id: 1, quantity: 2 }],
+    });
   });
 });

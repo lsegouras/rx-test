@@ -7,7 +7,7 @@ const express = require('express');
 
 /**
  * Routes of the kitchen queue. A rejected handler reaches the error middleware by itself (Express 5).
- * @param {{ actions: readonly string[], getQueue: Function, applyAction: Function }} ordersModule
+ * @param {{ actions: readonly string[], getQueue: Function, applyAction: Function, createOrder: Function }} ordersModule
  * @returns {import('express').Router}
  * @see PDF §7
  */
@@ -24,6 +24,11 @@ function createOrdersEndpoint(ordersModule) {
       res.json(await ordersModule.applyAction(req.params.id, action));
     });
   }
+
+  // The only route with a body, so the JSON parser is mounted here and nowhere else.
+  router.post('/orders', express.json(), async (req, res) => {
+    res.status(201).json(await ordersModule.createOrder(req.body));
+  });
 
   return router;
 }

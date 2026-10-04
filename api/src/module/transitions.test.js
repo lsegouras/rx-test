@@ -3,7 +3,7 @@
  * States the state-machine contract of PDF §6 with literal expectations; nothing here is computed from the rules.
  * @rule-change STATUS: when a row in status.rules.js changes, update the matching expectation here.
  */
-const { ACTIVE_QUEUE_STATUSES } = require('./status.rules');
+const { ACTIVE_QUEUE_STATUSES, INITIAL_STATUS } = require('./status.rules');
 const { transition, allowedActions, ORDER_STATUSES, ACTIONS } = require('./transitions');
 
 const attempt = (status, action) => () => transition({ id: 1, status }, action);
@@ -78,6 +78,10 @@ describe('allowed actions', () => {
 });
 
 describe('statuses', () => {
+  test('a new order starts as received', () => {
+    expect(INITIAL_STATUS).toBe('received');
+  });
+
   test('the active queue is exactly received and preparing', () => {
     expect(ACTIVE_QUEUE_STATUSES).toEqual(['received', 'preparing']);
   });

@@ -4,8 +4,8 @@
  * Must NOT import Express, Sequelize or the repository file, and must not read the clock:
  * the repository and the clock arrive as arguments of createOrdersModule.
  */
-const { computePriority, compareQueue, minutesWaiting } = require('./priority');
-const { ACTIVE_QUEUE_STATUSES } = require('./status.rules');
+const { ORDER_TYPES, computePriority, compareQueue, minutesWaiting } = require('./priority');
+const { ACTIVE_QUEUE_STATUSES, INITIAL_STATUS } = require('./status.rules');
 const { ACTIONS, allowedActions, transition } = require('./transitions');
 const { DomainError, ERROR_CODES } = require('./errors');
 
@@ -29,6 +29,48 @@ function parseOrderId(id) {
   return Number(id);
 }
 
+const isPositiveInteger = (value) => Number.isInteger(value) && value > 0;
+
+function invalid(message) {
+  return new DomainError(ERROR_CODES.VALIDATION_ERROR, message);
+}
+
+/** promised_at of a new order: absent or null means no promise; otherwise an ISO 8601 timestamp. */
+function parsePromisedAt(value) {
+  if (value === undefined || value === null) return null;
+  const date = typeof value === 'string' ? new Date(value) : null;
+  if (date === null || Number.isNaN(date.getTime())) {
+    throw invalid('promised_at must be an ISO 8601 timestamp or null.');
+  }
+  return date;
+}
+
+/** Checks the fields of a new order and returns them in the shape the repository stores. */
+function validateNewOrder(payload) {
+  if (payload === null || typeof payload !== 'object') throw invalid('The body must be a JSON object.');
+  const { customer_name, type, is_vip = false, promised_at, items } = payload;
+
+  if (typeof customer_name !== 'string' || customer_name.trim() === '') {
+    throw invalid('customer_name must be a non-empty string.');
+  }
+  if (!ORDER_TYPES.includes(type)) throw invalid(`type must be one of: ${ORDER_TYPES.join(', ')}.`);
+  if (typeof is_vip !== 'boolean') throw invalid('is_vip must be a boolean.');
+  if (!Array.isArray(items) || items.length === 0) throw invalid('items must be a non-empty array.');
+  for (const item of items) {
+    if (!isPositiveInteger(item?.menu_item_id) || !isPositiveInteger(item?.quantity)) {
+      throw invalid('Each item needs a menu_item_id and a quantity that are positive integers.');
+    }
+  }
+
+  return {
+    customer_name: customer_name.trim(),
+    type,
+    is_vip,
+    promised_at: parsePromisedAt(promised_at),
+    items: items.map(({ menu_item_id, quantity }) => ({ menu_item_id, quantity })),
+  };
+}
+
 /** Shapes one stored order as a queue item; score and minutes_waiting share the same now. */
 function toQueueItem(order, now) {
   return {
@@ -50,7 +92,7 @@ function toQueueItem(order, now) {
  * Builds the orders module on top of a repository and a clock. The app passes the Sequelize
  * repository and the system clock; tests pass an in-memory fake and a fixed clock.
  * @param {{ repository: object, clock: { now: () => Date } }} dependencies
- * @returns {{ actions: readonly string[], getQueue: Function, applyAction: Function }}
+ * @returns {{ actions: readonly string[], getQueue: Function, applyAction: Function, createOrder: Function }}
  * @see PDF §9.1
  */
 function createOrdersModule({ repository, clock }) {
@@ -94,7 +136,25 @@ function createOrdersModule({ repository, clock }) {
     return { id: orderId, status: nextStatus };
   }
 
-  return { actions: ACTIONS, getQueue, applyAction };
+  /**
+   * Creates an order in the initial status, placed at the clock's now.
+   * @param {object} payload { customer_name, type, is_vip?, promised_at?, items: [{ menu_item_id, quantity }] }
+   * @returns {Promise<{ id: number, status: string, placed_at: Date }>}
+   * @throws {DomainError} VALIDATION_ERROR for an invalid field, empty items or an unknown menu item
+   * @see PDF §11.1
+   */
+  async function createOrder(payload) {
+    const order = validateNewOrder(payload);
+    const menuItemIds = [...new Set(order.items.map((item) => item.menu_item_id))];
+    const found = await repository.findMenuItemsByIds(menuItemIds);
+    const foundIds = found.map((menuItem) => menuItem.id);
+    const missing = menuItemIds.filter((id) => !foundIds.includes(id));
+    if (missing.length > 0) throw invalid(`Unknown menu_item_id: ${missing.join(', ')}.`);
+
+    return repository.createOrder({ ...order, status: INITIAL_STATUS, placed_at: clock.now() });
+  }
+
+  return { actions: ACTIONS, getQueue, applyAction, createOrder };
 }
 
 module.exports = { createOrdersModule };

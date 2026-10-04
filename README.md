@@ -47,8 +47,21 @@ The Jest tests cover the business rules in `api/src/module`. They use their own 
 | POST | `/orders/:id/ready` | `preparing` -> `ready` |
 | POST | `/orders/:id/pickup` | `ready` -> `picked_up` |
 | POST | `/orders/:id/cancel` | `received` -> `cancelled` |
+| POST | `/orders` | Creates an order in `received` (extra, API only). Answers `201 { "id", "status", "placed_at" }`. |
 
-A successful POST answers `200 { "id": 1, "status": "preparing" }`.
+A successful transition answers `200 { "id": 1, "status": "preparing" }`.
+
+Body of `POST /orders`; `is_vip` and `promised_at` are optional:
+
+```json
+{
+  "customer_name": "Lia Torres",
+  "type": "delivery",
+  "is_vip": true,
+  "promised_at": "2030-01-01T12:30:00Z",
+  "items": [{ "menu_item_id": 2, "quantity": 1 }]
+}
+```
 
 ### Error codes
 
@@ -56,7 +69,7 @@ Every 4xx response has the body `{ "error": { "code": "...", "message": "..." } 
 
 | HTTP status | Code | When |
 | --- | --- | --- |
-| 400 | `VALIDATION_ERROR` | `:id` is not a positive integer, or `?status` is not `received` or `preparing` |
+| 400 | `VALIDATION_ERROR` | `:id` is not a positive integer; `?status` is not `received` or `preparing`; or the body of `POST /orders` is invalid (empty `items`, unknown `menu_item_id`, `quantity` not a positive integer, invalid field) |
 | 404 | `ORDER_NOT_FOUND` | No order has this id |
 | 409 | `INVALID_TRANSITION` | The order's current status does not allow the action: a skipped step, a repeated action, a terminal order, or a status that changed during the request |
 

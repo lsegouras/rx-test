@@ -3,7 +3,7 @@
  * Data access for orders: Sequelize queries that return plain objects, never model instances.
  * Must NOT score, sort by priority, decide which statuses are active or throw domain errors.
  */
-const { Order, OrderItem, MenuItem } = require('../schema/models');
+const { sequelize, Order, OrderItem, MenuItem } = require('../schema/models');
 
 /** Flattens an Order instance and its included items into the plain shape the Module works with. */
 function toPlainOrder(order) {
@@ -57,4 +57,34 @@ async function updateStatusIfCurrent(id, from, to) {
   return affectedRows;
 }
 
-module.exports = { findByStatuses, findById, updateStatusIfCurrent };
+/**
+ * @param {number[]} ids
+ * @returns {Promise<{ id: number }[]>} the menu items that exist among the given ids
+ */
+async function findMenuItemsByIds(ids) {
+  return MenuItem.findAll({ where: { id: ids }, attributes: ['id'], raw: true });
+}
+
+/**
+ * Inserts an order and its items in one transaction: both are stored, or neither.
+ * @param {{ customer_name: string, type: string, is_vip: boolean, status: string, placed_at: Date,
+ *   promised_at: Date | null, items: { menu_item_id: number, quantity: number }[] }} order
+ * @returns {Promise<{ id: number, status: string, placed_at: Date }>}
+ * @see PDF §11.1
+ */
+async function createOrder({ items, ...order }) {
+  return sequelize.transaction(async (transaction) => {
+    const created = await Order.create(order, { transaction });
+    const rows = items.map((item) => ({ ...item, order_id: created.id }));
+    await OrderItem.bulkCreate(rows, { transaction, validate: true });
+    return { id: created.id, status: created.status, placed_at: created.placed_at };
+  });
+}
+
+module.exports = {
+  findByStatuses,
+  findById,
+  updateStatusIfCurrent,
+  findMenuItemsByIds,
+  createOrder,
+};

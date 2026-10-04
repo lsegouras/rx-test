@@ -18,4 +18,7 @@ const TRANSITIONS = Object.freeze({
 // Statuses listed by the default queue; they are also the only values the ?status filter accepts.
 const ACTIVE_QUEUE_STATUSES = Object.freeze(['received', 'preparing']);
 
-module.exports = { TRANSITIONS, ACTIVE_QUEUE_STATUSES };
+// Status of an order created through POST /orders.
+const INITIAL_STATUS = 'received';
+
+module.exports = { TRANSITIONS, ACTIVE_QUEUE_STATUSES, INITIAL_STATUS };

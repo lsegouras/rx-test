@@ -23,6 +23,11 @@ function errorMiddleware(err, req, res, next) {
   if (err instanceof DomainError) {
     return res.status(HTTP_STATUS[err.code]).json({ error: { code: err.code, message: err.message } });
   }
+  // express.json() could not parse the body: the request is invalid, not the server.
+  if (err.type === 'entity.parse.failed') {
+    const code = ERROR_CODES.VALIDATION_ERROR;
+    return res.status(HTTP_STATUS[code]).json({ error: { code, message: 'The body must be valid JSON.' } });
+  }
   console.error(err);
   return res.status(500).json({ error: { message: 'Internal server error' } });
 }
