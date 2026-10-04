@@ -1,0 +1,2281 @@
+{
+  "meta": {
+    "name": "kitchen-display-queue-builder",
+    "version": "1.0.0",
+    "language": "en",
+    "objective": "Build the Kitchen Display Queue take-home (Express API + React web) task by task, meeting every mandatory PDF requirement inside the time box, with ranking and status rules isolated, marked and tested.",
+    "source_of_truth": "./docs/take-home-kitchen-queue.pdf",
+    "time_box_minutes": 240,
+    "core_budget_minutes": 180
+  },
+  "role": {
+    "persona": "Staff full-stack engineer pairing with the author of a take-home. You build small, layered, explainable code in the PDF's vocabulary, test business rules before implementing them, and stop at every gate so the author can review, commit and explain each file.",
+    "operating_principles": [
+      "The PDF is the only source of requirements and this file is its executable plan; never add features, fields, endpoints or dependencies",
+      "Treat the PDF as requirements authority; trace work through REQ IDs and section numbers.",
+      "Business rules live in the Module as pure functions and declarative tables; Endpoint, Repository and Web hold none",
+      "Test first in the Module; every task ends runnable, with its acceptance checks and tests passing",
+      "Prefer the smallest code the author can explain in one sentence per file and per function",
+      "Stop after each task, report and wait for the author; never write AI chat logs or the AI section of DECISIONS.md",
+      "If neither the PDF nor this file answers something that changes behavior, ask; do not guess"
+    ]
+  },
+  "context": {
+    "domain_summary": "A restaurant kitchen receives dine_in, takeout and delivery orders. The expeditor uses one screen to see every active order (received or preparing) ranked by a priority score computed at request time, and to move each order through received -> preparing -> ready -> picked_up, or cancel a received order. No authentication, payments or real customer data.",
+    "grading_focus": [
+      "Project organization and clear Endpoint/Module/Repository/Schema boundaries: four API layers named as in §9.1 plus one web app (§1)",
+      "Business rules live in Module rather than HTTP, SQL, or the frontend.",
+      "Business rules in the right layer: score, sort and state machine only in the Module (§1, §9.1)",
+      "Ranking and status rules are isolated, marked, tested, and fast to change in the panel: one rules file plus its matching test (§1, §13)",
+      "The author can explain every file and function, including AI-written code (§2)",
+      "A smaller result with an honest DECISIONS.md beats a wide one the author cannot explain (§1)"
+    ],
+    "stack": [
+      {
+        "name": "Node.js (machine prerequisite; the author installs or activates it, the executor only checks)",
+        "version": "22",
+        "scope": "api",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "Docker with the `docker compose` plugin (machine prerequisite; runs PostgreSQL only)",
+        "version": "any current release",
+        "scope": "tooling",
+        "section": "§12",
+        "origin": "spec"
+      },
+      {
+        "name": "git (machine prerequisite)",
+        "version": "any current release",
+        "scope": "tooling",
+        "section": "§12",
+        "origin": "spec"
+      },
+      {
+        "name": "JavaScript",
+        "version": "CommonJS modules, no TypeScript",
+        "scope": "api",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "Express",
+        "version": "^5 (npm latest 5.2.1)",
+        "scope": "api",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "Sequelize",
+        "version": "^6 (npm latest 6.37.8)",
+        "scope": "api",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "sequelize-cli (migration and seed runner required by §9.1 migrations)",
+        "version": "^6 (npm latest 6.6.5)",
+        "scope": "tooling",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "pg (PostgreSQL driver required by Sequelize)",
+        "version": "^8",
+        "scope": "db",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "PostgreSQL",
+        "version": "16 (docker image postgres:16, host port 5433)",
+        "scope": "db",
+        "section": "§9.3",
+        "origin": "spec"
+      },
+      {
+        "name": "Jest",
+        "version": "latest stable",
+        "scope": "test",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "name": "Vite",
+        "version": "latest stable (react-ts template)",
+        "scope": "web",
+        "section": "§9.2",
+        "origin": "spec"
+      },
+      {
+        "name": "React",
+        "version": "^19",
+        "scope": "web",
+        "section": "§9.2",
+        "origin": "spec"
+      },
+      {
+        "name": "TypeScript",
+        "version": "version shipped by the Vite react-ts template",
+        "scope": "web",
+        "section": "§9.2",
+        "origin": "spec"
+      },
+      {
+        "name": "@mui/material",
+        "version": "^7 (latest-v7 is 7.3.11; npm latest is 9.x, so always install with the ^7 range)",
+        "scope": "web",
+        "section": "§9.2",
+        "origin": "spec"
+      },
+      {
+        "name": "@emotion/react + @emotion/styled (MUI 7 peer dependencies)",
+        "version": "^11",
+        "scope": "web",
+        "section": "§9.2",
+        "origin": "spec"
+      },
+      {
+        "name": "npm workspaces",
+        "version": "npm bundled with Node 22",
+        "scope": "tooling",
+        "section": null,
+        "origin": "engineering"
+      },
+      {
+        "name": "concurrently",
+        "version": "latest stable",
+        "scope": "tooling",
+        "section": null,
+        "origin": "engineering"
+      },
+      {
+        "name": "Vitest (extra T14 only)",
+        "version": "latest stable",
+        "scope": "test",
+        "section": "§9.2",
+        "origin": "spec"
+      },
+      {
+        "name": "@testing-library/react + jsdom (renderer needed by the §11.2 component test; extra T14 only)",
+        "version": "latest stable",
+        "scope": "test",
+        "section": "§11.2",
+        "origin": "spec"
+      },
+      {
+        "name": "@playwright/test (extra T15 only)",
+        "version": "latest stable",
+        "scope": "test",
+        "section": "§11.3",
+        "origin": "spec"
+      }
+    ],
+    "doc_facts": [
+      {
+        "library": "MUI Material 7",
+        "context7_id": "not via Context7 (not connected); verified 2026-10-04 on v7.mui.com (installation, table, toggle-button) and npm",
+        "facts": [
+          "npm latest of @mui/material is 9.x; install `@mui/material@^7 @emotion/react @emotion/styled` (v7 = 7.3.11, React 17-19, Emotion ^11)",
+          "Components import by name from '@mui/material' (Table, TableRow, Chip, Alert...); Table size is 'small' | 'medium' (default 'medium')",
+          "ToggleButtonGroup `exclusive`: onChange(event, newValue) gives null when the active button is clicked again; ignore null to keep one selected"
+        ]
+      },
+      {
+        "library": "Sequelize 6 + sequelize-cli",
+        "context7_id": "not via Context7 (not connected); verified 2026-10-04 on sequelize.org/docs/v6 and sequelize.org/api/v6",
+        "facts": [
+          ".sequelizerc exports config, models-path, seeders-path, migrations-path via path.resolve; config may be .js; migrations are module.exports { up, down }",
+          "A join row with its own column is a model; adding hasMany/belongsTo on it lets a nested include eager-load it; where { status: [..] } becomes IN",
+          "Model.update(values, { where }) resolves to [affectedCount]; seederStorage defaults to none, so db:seed:all runs every seeder each time"
+        ]
+      },
+      {
+        "library": "Express 5",
+        "context7_id": "not via Context7 (not connected); verified 2026-10-04 on expressjs.com/en/guide/error-handling.html and npm",
+        "facts": [
+          "npm latest of express is 5.2.1 (4.x is tagged latest-4); Express 5 requires Node >= 18",
+          "Handlers that return a Promise call next(value) automatically when they reject or throw, so async handlers need no wrapper or try/catch",
+          "Error middleware has four arguments (err, req, res, next) and is defined last, after the other app.use() and route calls"
+        ]
+      },
+      {
+        "library": "Playwright (extra T15 only)",
+        "context7_id": "not via Context7 (not connected); verified 2026-10-04 on playwright.dev/docs/test-webserver",
+        "facts": [
+          "webServer accepts an array; each entry has command, url, name, timeout (default 60000 ms), cwd and reuseExistingServer",
+          "reuseExistingServer true reuses a server already answering on url, else starts one; false throws if the address is in use",
+          "use.baseURL sits next to webServer in the config, so the spec can navigate with relative paths"
+        ]
+      }
+    ],
+    "requirements": [
+      {
+        "id": "REQ-01",
+        "section": "§4.1",
+        "category": "data",
+        "statement": "MenuItem: name unique and non-empty; category in starter | main_course | dessert | drink; prep_time_minutes integer > 0; provided by the seed, no CRUD",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-02",
+        "section": "§4.2",
+        "category": "data",
+        "statement": "Order: customer_name non-empty string; type in dine_in | takeout | delivery; is_vip boolean",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-03",
+        "section": "§4.2",
+        "category": "data",
+        "statement": "Order: placed_at timestamp set on creation; promised_at timestamp or null",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-04",
+        "section": "§4.2",
+        "category": "data",
+        "statement": "Order.status is one of received | preparing | ready | picked_up | cancelled",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-05",
+        "section": "§4.3",
+        "category": "data",
+        "statement": "OrderItem (join table): order_id references an existing Order; menu_item_id references an existing MenuItem; quantity integer > 0",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-06",
+        "section": "§5",
+        "category": "business_rule",
+        "statement": "The default queue lists only received and preparing orders; ready, picked_up and cancelled stay out",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-07",
+        "section": "§5",
+        "category": "business_rule",
+        "statement": "The queue is sorted by priority score, highest first; the score is computed at request time using the real clock in the running app",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-08",
+        "section": "§5",
+        "category": "business_rule",
+        "statement": "All time comparisons use UTC",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-09",
+        "section": "§5.1",
+        "category": "business_rule",
+        "statement": "Type points: dine_in 30, takeout 20, delivery 10",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-10",
+        "section": "§5.1",
+        "category": "business_rule",
+        "statement": "VIP points: +20 if is_vip is true",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-11",
+        "section": "§5.1",
+        "category": "business_rule",
+        "statement": "Wait-time points = min(40, floor(minutes_waiting / 10) * 5); minutes_waiting = whole minutes since placed_at, floored (9 min 50 s = 9 = 0 points)",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-12",
+        "section": "§5.1",
+        "category": "business_rule",
+        "statement": "Promised-time points: promised_at within 30 minutes from now = 25; within 31-60 minutes = 15; more than 60 minutes away or null = 0",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-13",
+        "section": "§5.1",
+        "category": "business_rule",
+        "statement": "Complexity points = min(20, floor(total_prep_minutes / 15) * 5); total_prep_minutes = sum of prep_time_minutes * quantity over all items",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-14",
+        "section": "§5.2",
+        "category": "business_rule",
+        "statement": "Tie-break on equal score: earlier promised_at first (null last), then earlier placed_at, then smaller id",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-15",
+        "section": "§5.3",
+        "category": "business_rule",
+        "statement": "Worked examples with now = 2026-06-15T12:00:00Z: example A scores 60, example B scores 60, and B ranks above A",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-16",
+        "section": "§6",
+        "category": "business_rule",
+        "statement": "Only four transitions are legal: received -> preparing, received -> cancelled, preparing -> ready, ready -> picked_up; anything else is rejected",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-17",
+        "section": "§6",
+        "category": "business_rule",
+        "statement": "picked_up and cancelled are terminal; no order can skip a step; repeating the same transition is an error, not a silent success",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-18",
+        "section": "§6",
+        "category": "business_rule",
+        "statement": "The state machine is enforced on the server: a direct API call with an illegal transition is rejected with a clear error",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-19",
+        "section": "§7",
+        "category": "api",
+        "statement": "GET /orders/queue returns received and preparing orders sorted by score; each order includes its computed score",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-20",
+        "section": "§7",
+        "category": "api",
+        "statement": "GET /orders/queue accepts the optional query param status=received or status=preparing to filter",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-21",
+        "section": "§7",
+        "category": "api",
+        "statement": "POST /orders/:id/start transitions received -> preparing",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-22",
+        "section": "§7",
+        "category": "api",
+        "statement": "POST /orders/:id/ready transitions preparing -> ready",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-23",
+        "section": "§7",
+        "category": "api",
+        "statement": "POST /orders/:id/pickup transitions ready -> picked_up",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-24",
+        "section": "§7",
+        "category": "api",
+        "statement": "POST /orders/:id/cancel transitions received -> cancelled",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-25",
+        "section": "§7",
+        "category": "api",
+        "statement": "Illegal transitions and validation errors return a 4xx response with a stable machine-readable error code; the codes are documented in the README",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-26",
+        "section": "§8",
+        "category": "ui",
+        "statement": "One page, the Kitchen Display: a table of the active queue showing score, customer name, order type, items summary, wait time, promised time, VIP badge and status",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-27",
+        "section": "§8",
+        "category": "ui",
+        "statement": "The page offers a way to filter by received, preparing or the default active queue",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-28",
+        "section": "§8",
+        "category": "ui",
+        "statement": "Each order has actions to advance it to its next status; only the action valid for the current status is shown",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-29",
+        "section": "§8",
+        "category": "ui",
+        "statement": "The page offers a way to cancel a received order",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-30",
+        "section": "§8",
+        "category": "ui",
+        "statement": "The page shows an empty state when the queue has no orders",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-31",
+        "section": "§8",
+        "category": "ui",
+        "statement": "When the API rejects a transition, the error is visible on the screen, not only in the browser console",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-32",
+        "section": "§8",
+        "category": "ui",
+        "statement": "The UI uses MUI with a dense internal-tool layout (ops dashboard), not a marketing page",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-33",
+        "section": "§8",
+        "category": "ui",
+        "statement": "Score and sort order come from the API; the UI holds no copy of the scoring formula and shows rows in the order the API returns them",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-34",
+        "section": "§9",
+        "category": "technical",
+        "statement": "One repository with two apps (API and web); no dependency on any private or external repository",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-35",
+        "section": "§9.1",
+        "category": "technical",
+        "statement": "API stack: Node.js 22, JavaScript, Express, Sequelize 6, PostgreSQL 16, Jest",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-36",
+        "section": "§9.1",
+        "category": "technical",
+        "statement": "The schema is created by Sequelize migrations; sync() is not used for schema creation",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-37",
+        "section": "§9.1",
+        "category": "technical",
+        "statement": "The API is organized in layers: Endpoint (thin HTTP), Module (business logic), Repository (data access), Schema (models and migrations)",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-38",
+        "section": "§9.1",
+        "category": "technical",
+        "statement": "The priority function is pure: it receives the order data and now, returns a number, and its Jest tests run without PostgreSQL and without mocking Sequelize",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-39",
+        "section": "§9.2",
+        "category": "technical",
+        "statement": "Web stack: Vite, React 19, TypeScript, MUI 7",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-40",
+        "section": "§9.3",
+        "category": "technical",
+        "statement": "docker-compose.yml starts PostgreSQL 16 only, on host port 5433, with user, password and database all set to kitchen_queue",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-41",
+        "section": "§9.4",
+        "category": "technical",
+        "statement": "From a clean machine: docker compose up -d, one install command, one db:setup command (migrations + seed), one dev command (both apps); API on 4000, web on 5173",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-42",
+        "section": "§9.5",
+        "category": "seed",
+        "statement": "The seed contains menu items and orders with order items; every seed date is relative to the UTC time when the seed runs, with no hard-coded calendar dates",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-43",
+        "section": "§9.5",
+        "category": "seed",
+        "statement": "The seed shows: every order type; a VIP and a non-VIP; a wait-time cap; a complexity cap; a score tie broken by promised_at; received, preparing and at least one ready order",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-44",
+        "section": "§9.5",
+        "category": "test",
+        "statement": "Tests do not use the seed; they pass their own fixtures and a frozen now",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-45",
+        "section": "§10",
+        "category": "test",
+        "statement": "Jest priority tests prove: score calculation, both caps, all promised_at buckets (within 30, within 60, beyond, null), tie-break, and a lower base-weight type winning on the rest of the formula",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-46",
+        "section": "§10",
+        "category": "test",
+        "statement": "Jest transition tests prove: every legal transition succeeds; skip, repeat and from-terminal transitions are rejected; cancelled and picked-up orders are not in the default queue",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-47",
+        "section": "§10",
+        "category": "test",
+        "statement": "Priority tests freeze now; no test calls Date.now() and hopes the clock still matches",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-48",
+        "section": "§12",
+        "category": "deliverable",
+        "statement": "README.md has the prerequisites (Docker, Node 22), the four commands to get running, the ports and the API error codes",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-49",
+        "section": "§12.1",
+        "category": "deliverable",
+        "statement": "DECISIONS.md has the sections Scope, Layers, Priority, Transitions, AI and Next, a few short paragraphs each, answering the prompts of §12.1",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-50",
+        "section": "§2",
+        "category": "deliverable",
+        "statement": "The AI section of DECISIONS.md names one AI suggestion kept and one rejected or rewritten, quoting the idea and not the tool brand (written by the author)",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-51",
+        "section": "§2",
+        "category": "deliverable",
+        "statement": "A root folder ai-logs/ holds the full exported AI conversation history, wrong turns included (exported by the author)",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-52",
+        "section": "§11",
+        "category": "deliverable",
+        "statement": "DECISIONS.md notes which extra-point items were attempted and which were left out",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-53",
+        "section": "§12",
+        "category": "deliverable",
+        "statement": "The submission is a git repository that can be cloned, containing the API, the web app, migrations, seed and tests",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-54",
+        "section": "§14",
+        "category": "deliverable",
+        "statement": "Any deviation from the suggested layout (api/src, web/src, ai-logs/, root files) is explained in DECISIONS.md",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-55",
+        "section": "§1",
+        "category": "technical",
+        "statement": "The project is designed so that a change to ranking or to status rules is local and quick",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-56",
+        "section": "§13",
+        "category": "technical",
+        "statement": "With Docker running, both apps boot in a couple of minutes for the panel",
+        "optional": false,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-57",
+        "section": "§11.1",
+        "category": "api",
+        "statement": "POST /orders (API only): items non-empty, each menu_item_id references an existing menu item, each quantity a positive integer; at least one Jest test for a validation error",
+        "optional": true,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-58",
+        "section": "§11.2",
+        "category": "test",
+        "statement": "Vitest component test: the cancel button is shown only for received orders, or the queue table renders an empty state when there are no orders",
+        "optional": true,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-59",
+        "section": "§11.3",
+        "category": "test",
+        "statement": "Playwright happy path: the queue renders a seeded order, the expeditor starts preparation, the status changes on screen; webServer config lets npm run test:e2e boot what it needs",
+        "optional": true,
+        "origin": "spec"
+      },
+      {
+        "id": "REQ-60",
+        "section": null,
+        "category": "api",
+        "statement": "Every queue item carries allowed_actions derived from the transition table; the web renders only those buttons",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-61",
+        "section": null,
+        "category": "api",
+        "statement": "Every queue item carries minutes_waiting computed by the API with the same now as the score",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-62",
+        "section": null,
+        "category": "api",
+        "statement": "One error middleware maps domain errors to stable codes with the single body { error: { code, message } }; :id and ?status are validated",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-63",
+        "section": null,
+        "category": "technical",
+        "statement": "The queue is loaded in one eager-loaded query (orders + items + menu items), no N+1; orders.status is indexed",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-64",
+        "section": null,
+        "category": "data",
+        "statement": "Database constraints mirror §4: foreign keys, unique menu item name, CHECK (quantity > 0), CHECK (prep_time_minutes > 0), NOT NULL",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-65",
+        "section": null,
+        "category": "technical",
+        "statement": "Transitions are race-safe: load (404), transition() (409), then UPDATE ... WHERE id AND status = from; 0 rows affected is 409",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-66",
+        "section": null,
+        "category": "technical",
+        "statement": "Change points carry the markers @rule-change RANKING and @rule-change STATUS in rules files and their tests; README has a 'Where to change the rules' table",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-67",
+        "section": null,
+        "category": "technical",
+        "statement": "Every code file has a header of at most 4 lines and every exported function has JSDoc (api) or TSDoc (web) with @see PDF section",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-68",
+        "section": null,
+        "category": "ui",
+        "statement": "After a successful action the UI refetches the queue with the current filter and changes nothing locally; the action button is disabled while its request is in flight",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-69",
+        "section": null,
+        "category": "technical",
+        "statement": "Setup: npm workspaces + concurrently, .nvmrc and engines on Node 22, .env.example matching docker-compose, @mui/material@^7 and sequelize@^6 pinned, Vite proxy to the API",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-70",
+        "section": null,
+        "category": "deliverable",
+        "statement": "ai-logs/README.md tells the author what to export and how to name it; the executor never writes logs and reminds the author to export after each task",
+        "optional": false,
+        "origin": "engineering"
+      },
+      {
+        "id": "REQ-71",
+        "section": null,
+        "category": "technical",
+        "statement": "Machine prerequisites (Node.js 22 active, Docker running with the `docker compose` plugin, git) are checked before T01; if one is missing or wrong the executor stops and the author fixes it",
+        "optional": false,
+        "origin": "engineering"
+      }
+    ],
+    "entities": [
+      {
+        "name": "MenuItem",
+        "table": "menu_items",
+        "fields": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "rules": "Primary key, auto-increment"
+          },
+          {
+            "name": "name",
+            "type": "STRING",
+            "rules": "NOT NULL, UNIQUE; model validate notEmpty"
+          },
+          {
+            "name": "category",
+            "type": "STRING",
+            "rules": "NOT NULL; model validate isIn starter, main_course, dessert, drink"
+          },
+          {
+            "name": "prep_time_minutes",
+            "type": "INTEGER",
+            "rules": "NOT NULL; CHECK (prep_time_minutes > 0)"
+          }
+        ],
+        "relations": [
+          "MenuItem.hasMany(OrderItem, { foreignKey: 'menu_item_id' })"
+        ]
+      },
+      {
+        "name": "Order",
+        "table": "orders",
+        "fields": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "rules": "Primary key, auto-increment; last key of the §5.2 tie-break"
+          },
+          {
+            "name": "customer_name",
+            "type": "STRING",
+            "rules": "NOT NULL; model validate notEmpty"
+          },
+          {
+            "name": "type",
+            "type": "STRING",
+            "rules": "NOT NULL; VARCHAR; model validate isIn ORDER_TYPES (keys of PRIORITY_RULES.typeWeights)"
+          },
+          {
+            "name": "placed_at",
+            "type": "DATE (timestamptz)",
+            "rules": "NOT NULL; defaults to now() so it is set on creation"
+          },
+          {
+            "name": "promised_at",
+            "type": "DATE (timestamptz)",
+            "rules": "Nullable"
+          },
+          {
+            "name": "is_vip",
+            "type": "BOOLEAN",
+            "rules": "NOT NULL; default false"
+          },
+          {
+            "name": "status",
+            "type": "STRING",
+            "rules": "NOT NULL; VARCHAR; default 'received'; indexed; model validate isIn ORDER_STATUSES (keys of TRANSITIONS)"
+          }
+        ],
+        "relations": [
+          "Order.hasMany(OrderItem, { as: 'items', foreignKey: 'order_id' })",
+          "All models: underscored true, timestamps false (no columns beyond §4 plus id)"
+        ]
+      },
+      {
+        "name": "OrderItem",
+        "table": "order_items",
+        "fields": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "rules": "Primary key, auto-increment"
+          },
+          {
+            "name": "order_id",
+            "type": "INTEGER",
+            "rules": "NOT NULL; FK -> orders.id, ON DELETE CASCADE"
+          },
+          {
+            "name": "menu_item_id",
+            "type": "INTEGER",
+            "rules": "NOT NULL; FK -> menu_items.id, ON DELETE RESTRICT"
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "rules": "NOT NULL; CHECK (quantity > 0)"
+          }
+        ],
+        "relations": [
+          "OrderItem.belongsTo(Order, { foreignKey: 'order_id' })",
+          "OrderItem.belongsTo(MenuItem, { as: 'menuItem', foreignKey: 'menu_item_id' })"
+        ]
+      }
+    ],
+    "business_rules": {
+      "priority": {
+        "config_file": "api/src/modules/orders/priority.rules.js",
+        "pure_function_signature": "computePriority(order, now) -> number; order = { type, is_vip, placed_at: Date, promised_at: Date | null, items: [{ prep_time_minutes, quantity }] }; now = Date",
+        "components": [
+          {
+            "name": "type",
+            "formula": "PRIORITY_RULES.typeWeights[type]: dine_in 30, takeout 20, delivery 10"
+          },
+          {
+            "name": "vip",
+            "formula": "PRIORITY_RULES.vipBonus (20) if is_vip, else 0"
+          },
+          {
+            "name": "wait",
+            "formula": "min(40, floor(minutes_waiting / 10) * 5); minutes_waiting = floor((now - placed_at) / 60000)"
+          },
+          {
+            "name": "promised",
+            "formula": "ms until promised_at <= 30 min -> 25; > 30 min and <= 60 min -> 15; otherwise or null -> 0"
+          },
+          {
+            "name": "complexity",
+            "formula": "min(20, floor(total_prep_minutes / 15) * 5); total_prep_minutes = sum(prep_time_minutes * quantity)"
+          }
+        ],
+        "tie_break": [
+          "score descending",
+          "promised_at ascending, null last",
+          "placed_at ascending",
+          "id ascending"
+        ],
+        "edge_cases": [
+          "9 min 50 s waiting is 9 whole minutes = 0 wait points; 10 min 00 s = 5 (§5.1)",
+          "An overdue promised_at (negative difference) counts as within 30 min: 25 pts (D-01)",
+          "promised_at exactly +30 min = 25; +30 min 30 s = 15; exactly +60 min = 15; +60 min 1 s = 0 (D-02)",
+          "promised_at is scored for every order type, dine_in included (D-03)",
+          "14 total prep minutes = 0 complexity points; 15 = 5; 60 or more = 20 (cap)",
+          "Compare instants with getTime() (UTC ms); never parse or format local time in the Module"
+        ]
+      },
+      "state_machine": {
+        "table_file": "api/src/modules/orders/transitions.js",
+        "transitions": [
+          {
+            "action": "start",
+            "from": "received",
+            "to": "preparing",
+            "endpoint": "POST /orders/:id/start"
+          },
+          {
+            "action": "cancel",
+            "from": "received",
+            "to": "cancelled",
+            "endpoint": "POST /orders/:id/cancel"
+          },
+          {
+            "action": "ready",
+            "from": "preparing",
+            "to": "ready",
+            "endpoint": "POST /orders/:id/ready"
+          },
+          {
+            "action": "pickup",
+            "from": "ready",
+            "to": "picked_up",
+            "endpoint": "POST /orders/:id/pickup"
+          }
+        ],
+        "terminal": ["picked_up", "cancelled"],
+        "active_queue_statuses": ["received", "preparing"],
+        "on_illegal": "transition() throws DomainError INVALID_TRANSITION; the error middleware answers 409 { error: { code, message } } and the order stays unchanged"
+      }
+    },
+    "api_contracts": [
+      {
+        "method": "GET",
+        "path": "/orders/queue",
+        "params": null,
+        "query": { "status": "optional; received | preparing" },
+        "section": "§7",
+        "origin": "spec",
+        "success": {
+          "status": 200,
+          "body_shape": "JSON array of queue items (context.queue_item_dto), already sorted by compareQueue; [] when nothing matches"
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "when": "status is present and is not received or preparing (ready, cancelled, empty or unknown values)"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/orders/:id/start",
+        "params": { "id": "positive integer" },
+        "query": null,
+        "section": "§7",
+        "origin": "spec",
+        "success": {
+          "status": 200,
+          "body_shape": "{ id, status } of the updated order (status = preparing); the UI refetches the queue"
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "when": ":id is not a positive integer"
+          },
+          {
+            "status": 404,
+            "code": "ORDER_NOT_FOUND",
+            "when": "No order with this id"
+          },
+          {
+            "status": 409,
+            "code": "INVALID_TRANSITION",
+            "when": "Current status is not received (skip, repeat or terminal), or it changed during the request"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/orders/:id/ready",
+        "params": { "id": "positive integer" },
+        "query": null,
+        "section": "§7",
+        "origin": "spec",
+        "success": {
+          "status": 200,
+          "body_shape": "{ id, status } of the updated order (status = ready); the UI refetches the queue"
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "when": ":id is not a positive integer"
+          },
+          {
+            "status": 404,
+            "code": "ORDER_NOT_FOUND",
+            "when": "No order with this id"
+          },
+          {
+            "status": 409,
+            "code": "INVALID_TRANSITION",
+            "when": "Current status is not preparing (skip, repeat or terminal), or it changed during the request"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/orders/:id/pickup",
+        "params": { "id": "positive integer" },
+        "query": null,
+        "section": "§7",
+        "origin": "spec",
+        "success": {
+          "status": 200,
+          "body_shape": "{ id, status } of the updated order (status = picked_up)"
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "when": ":id is not a positive integer"
+          },
+          {
+            "status": 404,
+            "code": "ORDER_NOT_FOUND",
+            "when": "No order with this id"
+          },
+          {
+            "status": 409,
+            "code": "INVALID_TRANSITION",
+            "when": "Current status is not ready (skip, repeat or terminal), or it changed during the request"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/orders/:id/cancel",
+        "params": { "id": "positive integer" },
+        "query": null,
+        "section": "§7",
+        "origin": "spec",
+        "success": {
+          "status": 200,
+          "body_shape": "{ id, status } of the updated order (status = cancelled); the UI refetches the queue"
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "when": ":id is not a positive integer"
+          },
+          {
+            "status": 404,
+            "code": "ORDER_NOT_FOUND",
+            "when": "No order with this id"
+          },
+          {
+            "status": 409,
+            "code": "INVALID_TRANSITION",
+            "when": "Current status is not received (repeat or terminal), or it changed during the request"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/orders",
+        "params": {
+          "body": "{ customer_name, type, is_vip?, promised_at?, items: [{ menu_item_id, quantity }] } (extra T13 only)"
+        },
+        "query": null,
+        "section": "§11.1",
+        "origin": "spec",
+        "success": {
+          "status": 201,
+          "body_shape": "{ id, status: 'received', placed_at } of the created order"
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "when": "items empty or missing, unknown menu_item_id, quantity not a positive integer, or an invalid order field"
+          }
+        ]
+      }
+    ],
+    "queue_item_dto": {
+      "endpoint": "GET /orders/queue",
+      "fields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "computed_by": "db",
+          "ui_column": null,
+          "section": "§5.2",
+          "origin": "spec"
+        },
+        {
+          "name": "score",
+          "type": "integer",
+          "computed_by": "api",
+          "ui_column": "Score",
+          "section": "§7",
+          "origin": "spec"
+        },
+        {
+          "name": "customer_name",
+          "type": "string",
+          "computed_by": "db",
+          "ui_column": "Customer name",
+          "section": "§4.2",
+          "origin": "spec"
+        },
+        {
+          "name": "type",
+          "type": "'dine_in' | 'takeout' | 'delivery'",
+          "computed_by": "db",
+          "ui_column": "Order type",
+          "section": "§4.2",
+          "origin": "spec"
+        },
+        {
+          "name": "items",
+          "type": "[{ name: string, quantity: integer }]",
+          "computed_by": "db",
+          "ui_column": "Items summary",
+          "section": "§4.3",
+          "origin": "spec"
+        },
+        {
+          "name": "minutes_waiting",
+          "type": "integer (whole minutes, same now as score)",
+          "computed_by": "api",
+          "ui_column": "Wait time",
+          "section": null,
+          "origin": "engineering"
+        },
+        {
+          "name": "placed_at",
+          "type": "ISO 8601 UTC string",
+          "computed_by": "db",
+          "ui_column": null,
+          "section": "§4.2",
+          "origin": "spec"
+        },
+        {
+          "name": "promised_at",
+          "type": "ISO 8601 UTC string | null",
+          "computed_by": "db",
+          "ui_column": "Promised time",
+          "section": "§4.2",
+          "origin": "spec"
+        },
+        {
+          "name": "is_vip",
+          "type": "boolean",
+          "computed_by": "db",
+          "ui_column": "VIP badge",
+          "section": "§4.2",
+          "origin": "spec"
+        },
+        {
+          "name": "status",
+          "type": "'received' | 'preparing'",
+          "computed_by": "db",
+          "ui_column": "Status",
+          "section": "§4.2",
+          "origin": "spec"
+        },
+        {
+          "name": "allowed_actions",
+          "type": "string[] (action names from TRANSITIONS)",
+          "computed_by": "api",
+          "ui_column": "Actions",
+          "section": null,
+          "origin": "engineering"
+        }
+      ]
+    },
+    "ux_ui_rules": [
+      {
+        "id": "UI-01",
+        "rule": "One page with one MUI table; columns in order: Score, Customer, Type, Items, Wait, Promised, VIP, Status, Actions",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-02",
+        "rule": "Filter is an exclusive ToggleButtonGroup: Active (no query param, default), Received (?status=received), Preparing (?status=preparing)",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-03",
+        "rule": "Actions cell renders one button per entry of allowed_actions and nothing else; the web never maps status to actions",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-04",
+        "rule": "Cancel is the button for the cancel action; it appears only where allowed_actions includes cancel (received orders today)",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-05",
+        "rule": "When the API returns [], the table body shows one full-width row with the text 'No orders in the queue'",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-06",
+        "rule": "A rejected action shows a dismissible MUI Alert (severity error) above the table with error.code and error.message",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-07",
+        "rule": "Dense ops layout: Table size='small', compact header with title and filter, VIP and status as small Chips, no hero or marketing blocks",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-08",
+        "rule": "Rows are rendered in the order of the API array; no .sort(), no score arithmetic anywhere in web/src",
+        "section": "§8",
+        "origin": "spec"
+      },
+      {
+        "id": "UI-09",
+        "rule": "After a successful action, refetch the queue with the current filter; never edit score, order or status locally",
+        "section": null,
+        "origin": "engineering"
+      },
+      {
+        "id": "UI-10",
+        "rule": "The clicked row's action buttons are disabled while its request is in flight, so a double click cannot repeat a transition",
+        "section": null,
+        "origin": "engineering"
+      },
+      {
+        "id": "UI-11",
+        "rule": "Formatting only: items as '2x Grilled Salmon, 1x Caesar Salad'; wait as '{minutes_waiting} min'; promised_at as local HH:mm or a dash",
+        "section": null,
+        "origin": "engineering"
+      }
+    ],
+    "quality_attributes": [
+      {
+        "attribute": "testability",
+        "requirement": "All Module tests (priority, transitions, orders module) run without PostgreSQL and without Sequelize mocks, with a frozen now",
+        "how_verified": "`npm test -w api` passes after `docker compose stop`; no jest.mock and no Date.now in the test files",
+        "section": "§9.1",
+        "origin": "spec"
+      },
+      {
+        "attribute": "changeability",
+        "requirement": "A ranking or status tweak edits one rules file and its matching test, nothing in endpoints, repository or web",
+        "how_verified": "T12 drill: `git diff --stat` lists only the two rules files and their two test files",
+        "section": "§1",
+        "origin": "spec"
+      },
+      {
+        "attribute": "explainability",
+        "requirement": "Every file states its layer and limits; every exported function states its purpose and PDF section",
+        "how_verified": "Each code file starts with the header comment; `grep -rn '@see PDF'` hits every module, endpoint and repository file",
+        "section": "§2",
+        "origin": "spec"
+      },
+      {
+        "attribute": "consistency",
+        "requirement": "One UTC now per request drives score and minutes_waiting; the screen shows what the API returned, in its order",
+        "how_verified": "orders.module test asserts clock.now() is called once; `grep -rn '.sort(' web/src` prints nothing",
+        "section": "§5",
+        "origin": "spec"
+      },
+      {
+        "attribute": "performance",
+        "requirement": "The queue is read with one eager-loaded query: orders + items + menu items, no N+1",
+        "how_verified": "With DB_LOG=true, one GET /orders/queue logs exactly one SELECT",
+        "section": null,
+        "origin": "engineering"
+      }
+    ],
+    "architecture": {
+      "layers": [
+        {
+          "name": "Endpoint",
+          "path": "api/src/endpoints",
+          "responsibility": "HTTP only: read params and query, call one Module function, write the JSON response; map DomainError codes to HTTP statuses",
+          "must_not": [
+            "Call Sequelize, models or repository functions directly",
+            "Compute scores, sort, or decide whether a transition is legal"
+          ]
+        },
+        {
+          "name": "Module",
+          "path": "api/src/modules/orders",
+          "responsibility": "Business rules: PRIORITY_RULES, computePriority, compareQueue, TRANSITIONS, transition, queue assembly and input validation",
+          "must_not": [
+            "Import Express, Sequelize, models or the repository file (dependencies arrive as an argument)",
+            "Read the clock directly; now comes from the injected clock"
+          ]
+        },
+        {
+          "name": "Repository",
+          "path": "api/src/repositories",
+          "responsibility": "Data access: Sequelize queries, includes and filters; returns plain objects, never model instances",
+          "must_not": [
+            "Score, sort by priority or know which statuses are active (statuses arrive as an argument)",
+            "Throw HTTP or domain errors"
+          ]
+        },
+        {
+          "name": "Schema",
+          "path": "api/src/schema",
+          "responsibility": "Sequelize models, migrations and the seed; database constraints mirroring §4",
+          "must_not": [
+            "Call sequelize.sync()",
+            "Hold literal status or type lists (import ORDER_STATUSES and ORDER_TYPES from the Module)"
+          ]
+        },
+        {
+          "name": "Web",
+          "path": "web/src",
+          "responsibility": "One page: fetch the queue, render it in API order, format values, post actions and refetch",
+          "must_not": [
+            "Compute a score or sort rows",
+            "Map status to actions (render allowed_actions only)",
+            "Change queue rows locally after an action"
+          ]
+        }
+      ],
+      "folder_tree": ".\n  docker-compose.yml\n  package.json                 # workspaces [api, web]; scripts dev, db:setup, test\n  .nvmrc  .env.example  .gitignore\n  README.md\n  DECISIONS.md\n  docs/\n    RxRedefined Staff Engineer Take-home test.pdf\n  ai-logs/\n    README.md                  # export instructions for the author\n    00-planning/               # planning prompt, this JSON, PLAN.md\n  api/\n    package.json\n    .sequelizerc\n    src/\n      server.js                # listens on 4000\n      app.js                   # composition root: express app + deps { repository, clock }\n      config.js                # env with defaults equal to docker-compose\n      clock.js                 # systemClock.now(): the only argument-less new Date()\n      endpoints/\n        orders.endpoint.js\n        error.middleware.js\n      modules/orders/\n        priority.rules.js      # @rule-change RANKING\n        priority.js\n        priority.test.js       # @rule-change RANKING\n        transitions.js         # @rule-change STATUS\n        transitions.test.js    # @rule-change STATUS\n        orders.module.js\n        orders.module.test.js  # @rule-change STATUS (default queue)\n        errors.js\n      repositories/\n        orders.repository.js\n      schema/\n        sequelize.config.js\n        models/                # index.js, menu-item.js, order.js, order-item.js\n        migrations/            # 3 files, one per table\n        seeders/               # 01-demo-data.js, dates relative to seed time\n      testing/\n        frozen-now.js\n  web/\n    package.json  vite.config.ts  index.html  tsconfig*.json\n    src/\n      main.tsx\n      App.tsx\n      format.ts\n      api/\n        types.ts\n        ordersApi.ts\n      hooks/\n        useQueue.ts\n      components/\n        QueueTable.tsx\n      pages/\n        KitchenDisplay.tsx"
+    },
+    "code_conventions": {
+      "file_header": "Block comment at the top, max 4 lines: '<file> | Layer: <Endpoint|Module|Repository|Schema|Web>', what the file does, what it must NOT do, plus the @rule-change line where it applies",
+      "function_docs": "JSDoc (api) or TSDoc (web) on every exported function: purpose, @param, @returns and '@see PDF §x.y' for the section it implements. Comments explain why; they never narrate the line",
+      "rule_change_points": [
+        {
+          "marker": "@rule-change RANKING",
+          "file": "api/src/modules/orders/priority.rules.js",
+          "test_file": "api/src/modules/orders/priority.test.js",
+          "typical_change": "A weight, cap, step, promise bucket or the tie-break field order: edit PRIORITY_RULES and the matching expectation"
+        },
+        {
+          "marker": "@rule-change STATUS",
+          "file": "api/src/modules/orders/transitions.js",
+          "test_file": "api/src/modules/orders/transitions.test.js",
+          "typical_change": "Add, remove or redirect a transition: edit one row of TRANSITIONS and one row of the test.each tables"
+        },
+        {
+          "marker": "@rule-change STATUS",
+          "file": "api/src/modules/orders/transitions.js",
+          "test_file": "api/src/modules/orders/orders.module.test.js",
+          "typical_change": "Change which statuses are in the active queue: edit ACTIVE_QUEUE_STATUSES and the default-queue test"
+        }
+      ]
+    },
+    "ai_transparency": {
+      "ai_logs": [
+        "ai-logs/ lives at the repository root and holds the full exported AI conversation history: Markdown, JSON or screenshots (§2)",
+        "ai-logs/00-planning/ holds the planning artifacts: the planning prompt, this JSON and PLAN.md",
+        "The executor creates only ai-logs/README.md: what the author must export and the naming scheme NN-phase-topic.md (e.g. 02-build-T01-T04-scaffold-schema.md)",
+        "Wrong turns and failed attempts stay in the logs; the PDF does not penalize them and wants to see the steering",
+        "At the end of every task, remind the author to export the session to ai-logs/ and suggest the commit message 'TNN: {task name}'; never push"
+      ],
+      "decisions_md_sections": [
+        "Scope",
+        "Layers",
+        "Priority",
+        "Transitions",
+        "AI",
+        "Next"
+      ],
+      "executor_must_not": [
+        "Write, summarize, clean up, edit or invent conversation histories in ai-logs/",
+        "Write the AI section of DECISIONS.md; it holds only '<!-- AUTHOR: fill in -->' until the author writes it",
+        "Remove an '<!-- AUTHOR: review and rewrite in your own words -->' marker from a drafted section",
+        "Commit unless the author asks, or push at all"
+      ]
+    },
+    "decisions": [
+      {
+        "id": "D-01",
+        "topic": "Overdue promised_at",
+        "choice": "An overdue promised_at counts as within 30 minutes: 25 pts",
+        "rationale": "Time until promised_at is negative, so it is <= 30 min; a late order must not drop in the queue",
+        "decided_by": "author"
+      },
+      {
+        "id": "D-02",
+        "topic": "Promise bucket boundaries",
+        "choice": "Compare the difference in ms: <= 30 min -> 25; > 30 min and <= 60 min -> 15; otherwise 0",
+        "rationale": "Closes the 30-31 min gap of §5.1 with no rounding step: +30:00 = 25, +30:30 = 15, +60:00 = 15, +60:01 = 0",
+        "decided_by": "author"
+      },
+      {
+        "id": "D-03",
+        "topic": "promised_at on a dine_in order",
+        "choice": "Score promised_at for every order type, as §5.1 is written",
+        "rationale": "§5.1 does not condition on type and 'relevant for' in §4.2 is descriptive; the promise rule gets no type branch",
+        "decided_by": "author"
+      },
+      {
+        "id": "D-04",
+        "topic": "Error codes and HTTP statuses",
+        "choice": "400 VALIDATION_ERROR (bad :id or ?status, including status=ready); 404 ORDER_NOT_FOUND; 409 INVALID_TRANSITION",
+        "rationale": "Three stable codes cover §7; 409 says the request conflicts with the order's current status",
+        "decided_by": "author"
+      },
+      {
+        "id": "D-05",
+        "topic": "Express major",
+        "choice": "Express 5 (express@^5)",
+        "rationale": "npm latest is 5.2.1; rejected async handlers reach the error middleware with no wrapper (checked on expressjs.com)",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-06",
+        "topic": "status and type columns",
+        "choice": "VARCHAR validated by ORDER_STATUSES and ORDER_TYPES exported by the Module; no Postgres ENUM",
+        "rationale": "Adding an ENUM value needs a migration and §13 asks for a live rule change, so the lists live in one code file",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-07",
+        "topic": "pickup action in the UI",
+        "choice": "Follow the PDF literally: pickup is API-only and covered by tests; the gap is noted in DECISIONS.md Next",
+        "rationale": "ready orders leave the queue (§5) and the §7 filter accepts only received or preparing, so no row on screen can offer pickup",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-08",
+        "topic": "Where the default-queue test lives",
+        "choice": "Pure Jest test of the orders module with an in-memory fake repository; no Postgres, no Sequelize mocks",
+        "rationale": "Fast and simple; the Module passes ACTIVE_QUEUE_STATUSES to the repository, so one constant drives both",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-09",
+        "topic": "Valid actions come from the API",
+        "choice": "Queue items carry allowed_actions and the POST action routes are registered from the same TRANSITIONS table",
+        "rationale": "The state machine stays server-only (§6, §8); a new transition gets its route and its button with no endpoint or web edit",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-10",
+        "topic": "Response shapes",
+        "choice": "GET /orders/queue returns a bare JSON array; transition endpoints return 200 { id, status } and the UI refetches",
+        "rationale": "§7 does not fix the bodies; these are the smallest shapes that serve §8 and keep the queue as the only source of row data",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-11",
+        "topic": "Race-safe transition",
+        "choice": "Load -> transition() -> UPDATE ... WHERE id AND status = from; 0 rows affected -> 409 INVALID_TRANSITION",
+        "rationale": "Two expeditors clicking at once cannot both succeed, and 404 is never confused with 409; no lock or transaction needed",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-12",
+        "topic": "Unexpected errors",
+        "choice": "500 with code INTERNAL_ERROR in the same error body; unknown routes keep Express's default 404",
+        "rationale": "A fallback needs one code to keep the body consistent; it is not a §7 4xx code and adds no validation rule",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-13",
+        "topic": "Sequelize modelling",
+        "choice": "Order.hasMany(OrderItem) + OrderItem.belongsTo(MenuItem); timestamps false; CommonJS; models registered explicitly",
+        "rationale": "The join row carries data (quantity) so it is its own model; no columns beyond §4; sequelize-cli expects CommonJS",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-14",
+        "topic": "Re-runnable seed",
+        "choice": "The seeder truncates the three tables (RESTART IDENTITY) before inserting; db:setup = migrate + seed",
+        "rationale": "Re-running db:setup before the panel refreshes the relative dates and resets the demo state (§9.5, §13)",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-15",
+        "topic": "Layout deviations from §14",
+        "choice": "Add docs/ (the PDF) and ai-logs/00-planning/; keep *.test.js next to the module files; root e2e/ only if T15 runs",
+        "rationale": "A test beside its rules file makes the change point obvious; planning artifacts double as AI evidence. Explained in DECISIONS.md",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-16",
+        "topic": "Task sequence",
+        "choice": "Recommended order kept; one task added (T05 orders module) between transitions and Repository",
+        "rationale": "Queue assembly and applyAction are Module logic tested with a fake repository, so they come before the real one",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-17",
+        "topic": "Module dependencies",
+        "choice": "Module functions take deps = { repository, clock } as first argument; app.js builds deps once",
+        "rationale": "Plain argument passing, no DI container: the Module never imports Sequelize and tests pass a fake repository and a fixed clock",
+        "decided_by": "default"
+      },
+      {
+        "id": "D-18",
+        "topic": "PDF location",
+        "choice": "The PDF is docs/RxRedefined Staff Engineer Take-home test.pdf; meta.source_of_truth keeps the planning literal, so locate it with Glob docs/*.pdf",
+        "rationale": "The author saved the file under its original name; the planning prompt fixes the literal path and says to Glob when the path differs",
+        "decided_by": "author"
+      },
+      {
+        "id": "D-19",
+        "topic": "Library facts without Context7",
+        "choice": "context.doc_facts were checked on the official sites and npm instead of Context7; the executor does not query again",
+        "rationale": "Context7 was not connected and the author asked to verify on the current websites; each doc_facts entry names its source",
+        "decided_by": "author"
+      }
+    ],
+    "open_questions": [
+      {
+        "id": "Q-01",
+        "question": "The planning machine has Node v24.18.0 active, but §9.1 and the §12 README prerequisites say Node 22. Which runtime should the build and the panel use?",
+        "options": [
+          "Run `nvm use 22.23.2` (already installed in nvm-windows) before T01",
+          "Stay on Node 24 and record the deviation in DECISIONS.md"
+        ],
+        "applied_default": "Use Node 22: the author runs `nvm use 22.23.2` before T01; T01 checks that `node --version` prints v22.x and stops otherwise"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "name": "Monorepo scaffold, docker-compose and root scripts",
+      "summary": "One repository with npm workspaces, the §9.3 docker-compose, the API package with its dependencies and a config that defaults to the compose values",
+      "minutes": 15,
+      "optional": false,
+      "covers": [
+        "REQ-34",
+        "REQ-35",
+        "REQ-40",
+        "REQ-41",
+        "REQ-53",
+        "REQ-69",
+        "REQ-71"
+      ],
+      "depends_on": [],
+      "files": [
+        "docker-compose.yml",
+        "package.json",
+        ".nvmrc",
+        ".env.example",
+        ".gitignore",
+        "api/package.json",
+        "api/src/config.js"
+      ],
+      "steps": [
+        "Check prerequisites first: `node --version` is v22.x, `docker compose version` and `git --version` work; if not, stop and ask the author (never install them)",
+        "Run `git init` if the folder is not a repository; add .gitignore (node_modules, .env, dist, test-results, playwright-report)",
+        "Write docker-compose.yml exactly as in PDF §9.3: one service, postgres:16, host port 5433; nothing else",
+        "Create the root package.json: private, workspaces ['api'], engines node 22, scripts db:setup and test delegating to -w api; add .nvmrc (22)",
+        "Create api/package.json (CommonJS): express@^5, sequelize@^6, pg; dev deps sequelize-cli and jest; scripts dev (node --watch src/server.js) and test (jest)",
+        "Add .env.example (PORT=4000, DATABASE_URL on port 5433, DB_LOG=false) and api/src/config.js with the same defaults, header and JSDoc; no dotenv package"
+      ],
+      "acceptance": [
+        "`node --version` prints v22.x, `docker compose version` and `git --version` each print a version",
+        "`docker compose up -d` then `docker compose ps` shows exactly one service, postgres, mapped 5433->5432",
+        "`npm install` at the root exits 0 and creates one root package-lock.json",
+        "`npm ls express sequelize -w api` shows express 5.x and sequelize 6.x",
+        "`npm test -w api -- --passWithNoTests` exits 0"
+      ],
+      "tests": [],
+      "rule_change_surface": null,
+      "explain_in_panel": "npm workspaces give one install command and one place for root scripts (§9.4); config defaults equal the §9.3 compose values, so a clean clone runs without a .env file"
+    },
+    {
+      "id": "T02",
+      "name": "Schema: migrations and models",
+      "summary": "Three migrations and three models for menu_items, orders and order_items, with the database constraints that mirror §4",
+      "minutes": 15,
+      "optional": false,
+      "covers": [
+        "REQ-01",
+        "REQ-02",
+        "REQ-03",
+        "REQ-04",
+        "REQ-05",
+        "REQ-36",
+        "REQ-63",
+        "REQ-64"
+      ],
+      "depends_on": ["T01"],
+      "files": [
+        "api/.sequelizerc",
+        "api/src/schema/sequelize.config.js",
+        "api/src/schema/migrations/01-create-menu-items.js",
+        "api/src/schema/migrations/02-create-orders.js",
+        "api/src/schema/migrations/03-create-order-items.js",
+        "api/src/schema/models/index.js",
+        "api/src/schema/models/menu-item.js",
+        "api/src/schema/models/order.js",
+        "api/src/schema/models/order-item.js",
+        "api/package.json"
+      ],
+      "steps": [
+        "Add api/.sequelizerc (CommonJS, path.resolve) pointing config, models, migrations and seeders to api/src/schema/",
+        "Write 3 migrations with the columns of context.entities, snake_case names and no created_at or updated_at",
+        "Add the constraints: UNIQUE name, NOT NULLs, FKs, CHECK (prep_time_minutes > 0), CHECK (quantity > 0) and an index on orders.status",
+        "Keep type and status as VARCHAR (D-06); status defaults to 'received' and placed_at defaults to now()",
+        "Register the 3 models explicitly in models/index.js (no directory auto-loader): underscored, timestamps false, associations of context.entities",
+        "Add api scripts db:migrate and db:setup (db:migrate then db:seed:all); file header on every new file"
+      ],
+      "acceptance": [
+        "`npm run db:setup` at the root exits 0",
+        "`docker compose exec -T postgres psql -U kitchen_queue -d kitchen_queue -c '\\dt'` lists menu_items, orders and order_items",
+        "Via psql, an INSERT into order_items with quantity 0 fails with a check-constraint violation",
+        "Via psql, inserting two menu_items rows with the same name fails with a unique violation",
+        "`npm run db:migrate -w api` run a second time exits 0 with nothing to migrate",
+        "`grep -rn 'sync(' api/src` prints nothing"
+      ],
+      "tests": [],
+      "rule_change_surface": null,
+      "explain_in_panel": "The schema is created only by migrations (§9.1). The database enforces the §4 invariants; status and type stay VARCHAR so a live rule change needs no migration"
+    },
+    {
+      "id": "T03",
+      "name": "Priority module (pure, TDD)",
+      "summary": "computePriority(order, now) and compareQueue(a, b) as pure functions driven by one declarative PRIORITY_RULES object",
+      "minutes": 25,
+      "optional": false,
+      "covers": [
+        "REQ-08",
+        "REQ-09",
+        "REQ-10",
+        "REQ-11",
+        "REQ-12",
+        "REQ-13",
+        "REQ-14",
+        "REQ-15",
+        "REQ-38",
+        "REQ-44",
+        "REQ-45",
+        "REQ-47",
+        "REQ-66",
+        "REQ-67"
+      ],
+      "depends_on": ["T01"],
+      "files": [
+        "api/src/testing/frozen-now.js",
+        "api/src/modules/orders/priority.rules.js",
+        "api/src/modules/orders/priority.js",
+        "api/src/modules/orders/priority.test.js"
+      ],
+      "steps": [
+        "Create testing/frozen-now.js: FROZEN_NOW = new Date('2026-06-15T12:00:00Z'), secondsAgo(n), minutesAgo(n), minutesFromNow(n), fixedClock(now)",
+        "Write failing Jest tests first: §5.3 examples A and B as literal fixtures, then the boundary tables with test.each",
+        "Write PRIORITY_RULES (frozen): typeWeights, vipBonus, wait { stepMinutes, pointsPerStep, cap }, promised buckets, complexity, tieBreak field order",
+        "Implement computePriority, minutesWaiting(placedAt, now), totalPrepMinutes(items) and compareQueue; every number comes from PRIORITY_RULES",
+        "Compare instants with getTime(); the promise bucket is the first one whose withinMinutes covers the ms difference (D-01, D-02)",
+        "Export ORDER_TYPES = Object.keys(typeWeights); add headers, JSDoc with @see PDF §5.1 / §5.2 and the @rule-change RANKING markers"
+      ],
+      "acceptance": [
+        "`npm test -w api -- priority` passes with PostgreSQL stopped (`docker compose stop`)",
+        "`grep -nE 'Date\\.now|new Date\\(\\)' api/src/modules/orders/priority.js api/src/modules/orders/priority.test.js` prints nothing",
+        "`grep -rn '@rule-change RANKING' api/src` lists priority.rules.js and priority.test.js",
+        "`grep -nE 'require\\(.*(express|sequelize|repositories)' api/src/modules/orders/priority.js api/src/modules/orders/priority.rules.js` prints nothing"
+      ],
+      "tests": [
+        {
+          "file": "api/src/modules/orders/priority.test.js",
+          "framework": "jest",
+          "cases": [
+            "§5.3 example A as a literal fixture with now = 2026-06-15T12:00:00Z scores 60",
+            "§5.3 example B as a literal fixture scores 60",
+            "compareQueue puts example B above A (tie on 60; promised_at beats null)",
+            "type weights (test.each): dine_in 30, takeout 20, delivery 10",
+            "VIP adds 20; non-VIP adds 0",
+            "wait (test.each): 9 min 50 s -> 0; 10 min 00 s -> 5; 35 min -> 15; 80 min -> 40; 200 min -> 40 (cap)",
+            "promised (test.each): +20 min -> 25; +30:00 -> 25; +30:30 -> 15; +45 min -> 15; +60:00 -> 15",
+            "promised (test.each): +60:01 -> 0; +90 min -> 0; null -> 0; overdue by 10 min -> 25 (D-01)",
+            "dine_in with promised_at +20 min gets the 25 promise points (D-03)",
+            "complexity (test.each): 14 min -> 0; 15 min -> 5; 50 min -> 15; 60 min -> 20; 84 min -> 20 (cap)",
+            "total prep minutes = sum of prep_time_minutes * quantity across items",
+            "tie-break: earlier promised_at first; null promised_at last",
+            "tie-break: same promised_at -> earlier placed_at first; same placed_at -> smaller id first",
+            "a higher score sorts first regardless of the tie-break fields",
+            "delivery VIP promised in 20 min (55) ranks above a dine_in non-VIP with nothing else (30)"
+          ]
+        }
+      ],
+      "rule_change_surface": "A weight, cap, step, bucket or tie-break order change edits PRIORITY_RULES and the matching expectation in priority.test.js",
+      "explain_in_panel": "The score is a pure function of (order, now): reproducible with a frozen now, and a ranking tweak never touches HTTP or SQL. All numbers sit in one object, so the formula reads like the §5.1 table"
+    },
+    {
+      "id": "T04",
+      "name": "Transitions module (table, TDD)",
+      "summary": "The state machine as one declarative table plus transition(order, action) and allowedActions(status); the active-queue statuses live in the same file",
+      "minutes": 10,
+      "optional": false,
+      "covers": ["REQ-04", "REQ-16", "REQ-17", "REQ-46", "REQ-66", "REQ-67"],
+      "depends_on": ["T01"],
+      "files": [
+        "api/src/modules/orders/errors.js",
+        "api/src/modules/orders/transitions.js",
+        "api/src/modules/orders/transitions.test.js"
+      ],
+      "steps": [
+        "Create errors.js: ERROR_CODES (VALIDATION_ERROR, ORDER_NOT_FOUND, INVALID_TRANSITION) and class DomainError(code, message)",
+        "Write failing Jest tests first: the legal transitions, then skip, repeat and terminal cases with test.each",
+        "Write TRANSITIONS as a frozen table status -> { action: nextStatus }, with empty objects for picked_up and cancelled",
+        "Implement transition(order, action): return the next status or throw DomainError INVALID_TRANSITION naming status and action; allowedActions(status)",
+        "Export ACTIVE_QUEUE_STATUSES, ORDER_STATUSES = Object.keys(TRANSITIONS) and ACTIONS (unique action names) from the same file",
+        "Add headers, JSDoc with @see PDF §6 and the @rule-change STATUS markers"
+      ],
+      "acceptance": [
+        "`npm test -w api -- transitions` passes with PostgreSQL stopped",
+        "`grep -rn '@rule-change STATUS' api/src` lists transitions.js and transitions.test.js",
+        "`grep -nE 'switch|else if' api/src/modules/orders/transitions.js` prints nothing (the rules are a table, not branches)"
+      ],
+      "tests": [
+        {
+          "file": "api/src/modules/orders/transitions.test.js",
+          "framework": "jest",
+          "cases": [
+            "legal (test.each): received + start -> preparing; received + cancel -> cancelled",
+            "legal (test.each): preparing + ready -> ready; ready + pickup -> picked_up",
+            "skip a step: received + ready, received + pickup and preparing + pickup throw INVALID_TRANSITION",
+            "repeat: start on an order that is already preparing throws INVALID_TRANSITION (the §12.1 case)",
+            "repeat: ready on an order that is already ready throws INVALID_TRANSITION",
+            "terminal (test.each): every action on picked_up and on cancelled throws INVALID_TRANSITION",
+            "cancel is rejected from preparing and from ready",
+            "allowedActions: received -> [start, cancel]; preparing -> [ready]; ready -> [pickup]",
+            "allowedActions: picked_up -> []; cancelled -> []",
+            "ACTIVE_QUEUE_STATUSES is [received, preparing]; ORDER_STATUSES has the 5 statuses of §4.2"
+          ]
+        }
+      ],
+      "rule_change_surface": "Adding, removing or redirecting a transition edits one row of TRANSITIONS and one row of the test.each tables in transitions.test.js",
+      "explain_in_panel": "The state machine is data: one table read by transition(), allowedActions() and the route list, so the server is the only place that knows what is legal (§6)"
+    },
+    {
+      "id": "T05",
+      "name": "Orders module: queue assembly and applyAction",
+      "summary": "getQueue and applyAction orchestrate repository, clock, priority and transitions; tested with an in-memory fake repository and a fixed clock",
+      "minutes": 15,
+      "optional": false,
+      "covers": [
+        "REQ-06",
+        "REQ-07",
+        "REQ-18",
+        "REQ-44",
+        "REQ-46",
+        "REQ-60",
+        "REQ-61",
+        "REQ-65",
+        "REQ-67"
+      ],
+      "depends_on": ["T03", "T04"],
+      "files": [
+        "api/src/modules/orders/orders.module.js",
+        "api/src/modules/orders/orders.module.test.js"
+      ],
+      "steps": [
+        "Write failing tests first with a fake repository (a plain object built in the test file) and fixedClock; no jest.mock",
+        "getQueue(deps, { status }): validate status against ACTIVE_QUEUE_STATUSES, read now = deps.clock.now() once, call deps.repository.findByStatuses",
+        "Map each order to context.queue_item_dto: score = computePriority(order, now), minutes_waiting, allowed_actions; then sort with compareQueue",
+        "applyAction(deps, id, action): validate id as a positive integer, findById (ORDER_NOT_FOUND), transition(), updateStatusIfCurrent(id, from, to)",
+        "If updateStatusIfCurrent returns 0 rows, throw INVALID_TRANSITION (the status changed in between); otherwise return { id, status }",
+        "Assert order and scores through compareQueue and computePriority, not literal numbers, so a weight change never edits this test file"
+      ],
+      "acceptance": [
+        "`npm test -w api` passes with PostgreSQL stopped (priority, transitions and orders.module test files)",
+        "`grep -nE 'require\\(.*(express|sequelize|repositories)' api/src/modules/orders/orders.module.js` prints nothing",
+        "`grep -rn 'jest.mock' api/src` prints nothing",
+        "`grep -n '@rule-change STATUS' api/src/modules/orders/orders.module.test.js` marks the default-queue test"
+      ],
+      "tests": [
+        {
+          "file": "api/src/modules/orders/orders.module.test.js",
+          "framework": "jest",
+          "cases": [
+            "default queue with one order per status returns the received and the preparing order",
+            "default queue excludes the ready, the picked_up and the cancelled order (@rule-change STATUS)",
+            "status=received returns only received; status=preparing returns only preparing",
+            "status=ready, status=cancelled and status=banana throw VALIDATION_ERROR",
+            "result order equals the fixtures sorted with compareQueue; score = computePriority(order, now)",
+            "each item has exactly the fields of context.queue_item_dto",
+            "minutes_waiting uses the same frozen now as the score; clock.now() is called exactly once",
+            "allowed_actions of a received item is [start, cancel]",
+            "applyAction: ids 'abc', 0, -1 and 1.5 throw VALIDATION_ERROR",
+            "applyAction: an unknown id throws ORDER_NOT_FOUND",
+            "applyAction: start on a preparing order throws INVALID_TRANSITION and updates nothing",
+            "applyAction: start on a received order returns { id, status: 'preparing' } and updates the fake",
+            "applyAction: a conditional update that affects 0 rows throws INVALID_TRANSITION"
+          ]
+        }
+      ],
+      "rule_change_surface": "Changing which statuses are in the active queue edits ACTIVE_QUEUE_STATUSES in transitions.js and the default-queue test in this file",
+      "explain_in_panel": "Dependencies arrive as one plain argument { repository, clock }: the same functions run on Postgres in the app and on a fake in tests, and one now per request drives score and wait time"
+    },
+    {
+      "id": "T06",
+      "name": "Repository",
+      "summary": "Three Sequelize functions returning plain objects: the eager-loaded queue read, a find by id and the conditional status update",
+      "minutes": 10,
+      "optional": false,
+      "covers": ["REQ-37", "REQ-63", "REQ-65", "REQ-67"],
+      "depends_on": ["T02", "T05"],
+      "files": [
+        "api/src/repositories/orders.repository.js",
+        "api/src/schema/models/order.js",
+        "api/src/schema/models/index.js"
+      ],
+      "steps": [
+        "findByStatuses(statuses): one Order.findAll with status IN statuses and include items -> menuItem; no ORDER BY priority, no scoring",
+        "Return plain objects { id, customer_name, type, is_vip, status, placed_at, promised_at, items: [{ name, quantity, prep_time_minutes }] }",
+        "findById(id): return { id, status } or null",
+        "updateStatusIfCurrent(id, from, to): Order.update({ status: to }, { where: { id, status: from } }) and return the affected row count",
+        "In the Order model add validate.isIn from ORDER_STATUSES and ORDER_TYPES imported from the Module; Schema holds no literal lists",
+        "Enable Sequelize logging only when DB_LOG=true; add headers and JSDoc"
+      ],
+      "acceptance": [
+        "With Postgres up, a `node -e` one-liner calling findByStatuses(['received']) prints an array and exits 0",
+        "With DB_LOG=true the same call logs exactly one SELECT statement",
+        "`grep -nE 'computePriority|compareQueue|TRANSITIONS|ACTIVE_QUEUE' api/src/repositories/orders.repository.js` prints nothing",
+        "`npm test -w api` still passes"
+      ],
+      "tests": [],
+      "rule_change_surface": null,
+      "explain_in_panel": "The repository only translates between Sequelize and plain objects. The conditional UPDATE makes a transition race-safe without a lock, and the statuses to load arrive as an argument"
+    },
+    {
+      "id": "T07",
+      "name": "Endpoints and error middleware",
+      "summary": "Thin Express 5 routes for the queue and the four transitions, plus one middleware that maps domain errors to stable codes",
+      "minutes": 15,
+      "optional": false,
+      "covers": [
+        "REQ-18",
+        "REQ-19",
+        "REQ-20",
+        "REQ-21",
+        "REQ-22",
+        "REQ-23",
+        "REQ-24",
+        "REQ-25",
+        "REQ-37",
+        "REQ-62",
+        "REQ-67"
+      ],
+      "depends_on": ["T05", "T06"],
+      "files": [
+        "api/src/clock.js",
+        "api/src/app.js",
+        "api/src/server.js",
+        "api/src/endpoints/orders.endpoint.js",
+        "api/src/endpoints/error.middleware.js"
+      ],
+      "steps": [
+        "clock.js: systemClock = { now: () => new Date() }; app.js builds deps = { repository, clock: systemClock } and mounts the router, then the middleware",
+        "GET /orders/queue -> getQueue(deps, { status: req.query.status }) -> res.json(items)",
+        "For each name in ACTIONS register POST /orders/:id/<name> -> applyAction(deps, req.params.id, name) -> 200 { id, status }",
+        "error.middleware.js: map the DomainError code to 400, 404 or 409 and write { error: { code, message } }; anything else is 500 INTERNAL_ERROR",
+        "Rely on Express 5 forwarding rejected async handlers: no try/catch in handlers, no CORS package, no body parser",
+        "server.js listens on config.port (4000); add headers and JSDoc with @see PDF §7"
+      ],
+      "acceptance": [
+        "`npm run dev -w api` starts and `curl -s -o /dev/null -w '%{http_code}' localhost:4000/orders/queue` prints 200",
+        "`curl -s 'localhost:4000/orders/queue?status=ready'` returns 400 with error.code VALIDATION_ERROR",
+        "`curl -s -X POST localhost:4000/orders/999999/start` returns 404 with error.code ORDER_NOT_FOUND",
+        "`curl -s -X POST localhost:4000/orders/abc/start` returns 400 with error.code VALIDATION_ERROR",
+        "`grep -rnE 'computePriority|compareQueue|findAll|sequelize' api/src/endpoints` prints nothing",
+        "`grep -rlE 'Date\\.now|new Date\\(\\)' api/src` lists only api/src/clock.js"
+      ],
+      "tests": [],
+      "rule_change_surface": null,
+      "explain_in_panel": "An endpoint translates HTTP into one module call and back. Routes are generated from the action names of the transition table, so this layer does not know which transition is legal"
+    },
+    {
+      "id": "T08",
+      "name": "Seed with relative dates",
+      "summary": "One re-runnable seeder with menu items and orders that demonstrate every §9.5 scenario, all dates computed from the seed-run time",
+      "minutes": 15,
+      "optional": false,
+      "covers": ["REQ-01", "REQ-06", "REQ-19", "REQ-20", "REQ-42", "REQ-43"],
+      "depends_on": ["T02", "T07"],
+      "files": ["api/src/schema/seeders/01-demo-data.js"],
+      "steps": [
+        "In up() capture now = new Date() once and build every date with minutesAgo / minutesFromNow helpers; no calendar literals",
+        "Start up() with TRUNCATE order_items, orders, menu_items RESTART IDENTITY CASCADE so db:setup can be re-run (D-14)",
+        "Insert menu items covering the 4 categories, including Grilled Salmon 20, Caesar Salad 10 and Margherita Pizza 12 from §5.3",
+        "Insert orders: all 3 types, VIP and non-VIP, one placed 120 min ago (wait cap), one with at least 60 total prep minutes (complexity cap)",
+        "Insert the tie pair: same type, VIP flag, items and placed_at; one promised in 3 hours, the other with promised_at null",
+        "Insert at least one preparing and one ready order; comment each order with the §9.5 bullet it demonstrates"
+      ],
+      "acceptance": [
+        "`npm run db:setup` run twice exits 0 both times and `SELECT count(*) FROM orders` is the same after each run",
+        "`curl -s localhost:4000/orders/queue` returns only received and preparing items, with scores in non-increasing order",
+        "`curl -s 'localhost:4000/orders/queue?status=received'` returns only received items",
+        "`curl -s 'localhost:4000/orders/queue?status=preparing'` returns only preparing items",
+        "The tie pair is adjacent with equal scores and the item with a promised_at comes first; the ready order's id is absent",
+        "One item has minutes_waiting >= 80 (wait cap) and the complexity-cap order is present with all 3 types and both VIP values in the queue",
+        "`curl -s -X POST localhost:4000/orders/{id of the preparing order}/start` returns 409 with error.code INVALID_TRANSITION",
+        "`grep -nE '20[0-9]{2}-[0-9]{2}' api/src/schema/seeders/01-demo-data.js` prints nothing"
+      ],
+      "tests": [],
+      "rule_change_surface": null,
+      "explain_in_panel": "Every seed date is an offset from the seed run, and the tie pair has no promise inside the next 2 hours, so the demo holds during the panel; re-running db:setup refreshes it"
+    },
+    {
+      "id": "T09",
+      "name": "Web scaffold and API client",
+      "summary": "Vite + React 19 + TypeScript + MUI 7 app with a dev proxy to the API, the QueueItem type and a small typed fetch client",
+      "minutes": 10,
+      "optional": false,
+      "covers": ["REQ-34", "REQ-39", "REQ-41", "REQ-67", "REQ-69"],
+      "depends_on": ["T07"],
+      "files": [
+        "package.json",
+        "web/package.json",
+        "web/vite.config.ts",
+        "web/index.html",
+        "web/src/main.tsx",
+        "web/src/App.tsx",
+        "web/src/api/types.ts",
+        "web/src/api/ordersApi.ts"
+      ],
+      "steps": [
+        "Scaffold web/ with the Vite react-ts template (React 19, TypeScript); delete the demo assets and CSS; write files by hand if the scaffolder prompts",
+        "Install @mui/material@^7 @emotion/react @emotion/styled; add no state or data-fetching library",
+        "vite.config.ts: server.port 5173, strictPort true, proxy '/orders' -> http://localhost:4000 (so the API needs no CORS)",
+        "api/types.ts: QueueItem mirroring context.queue_item_dto, QueueFilter = 'active' | 'received' | 'preparing', ApiErrorBody",
+        "api/ordersApi.ts: fetchQueue(filter) and postAction(id, action); on a non-2xx response throw ApiError carrying error.code and error.message",
+        "Root package.json: add 'web' to workspaces and dev = concurrently running the api and web dev scripts; headers and TSDoc on the new files"
+      ],
+      "acceptance": [
+        "`npm install` exits 0 and `npm ls react @mui/material -w web` shows react 19.x and @mui/material 7.x",
+        "`npm run dev` starts both apps: the API on 4000 and the web app on 5173",
+        "`curl -s localhost:5173/orders/queue` returns the same JSON as `curl -s localhost:4000/orders/queue`",
+        "`npm run build -w web` exits 0 (type-check passes)",
+        "`grep -nE 'redux|tanstack|react-query|swr|axios' web/package.json` prints nothing"
+      ],
+      "tests": [],
+      "rule_change_surface": null,
+      "explain_in_panel": "The web app has one typed fetch client and a dev proxy. QueueItem mirrors the API DTO field by field, so the UI has nothing to compute"
+    },
+    {
+      "id": "T10",
+      "name": "Kitchen Display page",
+      "summary": "The single page: dense MUI table in API order, status filter, action buttons from allowed_actions, empty state and on-screen API errors",
+      "minutes": 25,
+      "optional": false,
+      "covers": [
+        "REQ-26",
+        "REQ-27",
+        "REQ-28",
+        "REQ-29",
+        "REQ-30",
+        "REQ-31",
+        "REQ-32",
+        "REQ-33",
+        "REQ-60",
+        "REQ-67",
+        "REQ-68"
+      ],
+      "depends_on": ["T08", "T09"],
+      "files": [
+        "web/src/App.tsx",
+        "web/src/pages/KitchenDisplay.tsx",
+        "web/src/components/QueueTable.tsx",
+        "web/src/hooks/useQueue.ts",
+        "web/src/format.ts"
+      ],
+      "steps": [
+        "useQueue(): state { items, filter, loading, error, pendingId }; load on mount and on filter change; runAction posts, then refetches with the current filter",
+        "QueueTable: MUI Table size='small'; one TableRow per item in array order (key and data-order-id = id); the 9 columns of UI-01",
+        "Actions cell: one Button per allowed_actions entry, label from ACTION_LABELS in format.ts (fallback: the action name), disabled while pendingId = id",
+        "KitchenDisplay: title, exclusive ToggleButtonGroup (Active | Received | Preparing), dismissible error Alert with code and message, QueueTable",
+        "Empty state: when items is [] render one full-width row 'No orders in the queue'; format.ts only formats values and labels (UI-11)",
+        "No .sort(), no score arithmetic and no status-to-action map anywhere in web/src; headers and TSDoc on every file"
+      ],
+      "acceptance": [
+        "http://localhost:5173 shows the 9 columns and the rows are in the same id order as `curl -s localhost:4000/orders/queue`",
+        "Selecting Received requests /orders/queue?status=received and shows only received rows; Active requests /orders/queue with no param",
+        "A received row shows exactly the Start and Cancel buttons; a preparing row shows exactly the Mark ready button",
+        "Clicking Start changes that row's status to preparing after the refetch; clicking Mark ready removes the row",
+        "After `curl -X POST localhost:4000/orders/{id}/start` on a received row, clicking Start on the stale row shows an Alert with INVALID_TRANSITION",
+        "With no rows for the selected filter, the table shows 'No orders in the queue'",
+        "`grep -rnE '\\.sort\\(|Math\\.floor|Math\\.min' web/src` prints nothing and `npm run build -w web` exits 0"
+      ],
+      "tests": [],
+      "rule_change_surface": "None in web: a new or removed transition changes allowed_actions in the API response and the buttons follow; ACTION_LABELS may gain a label",
+      "explain_in_panel": "The page is a view of the API response: it keeps the API order, renders the buttons the server lists and refetches after every action instead of editing local state"
+    },
+    {
+      "id": "T11",
+      "name": "README, DECISIONS.md and ai-logs/README.md",
+      "summary": "The written deliverables: how to run and where to change rules (README), why (DECISIONS.md drafts for the author) and export instructions for the AI logs",
+      "minutes": 10,
+      "optional": false,
+      "covers": [
+        "REQ-25",
+        "REQ-48",
+        "REQ-49",
+        "REQ-50",
+        "REQ-51",
+        "REQ-52",
+        "REQ-54",
+        "REQ-66",
+        "REQ-70"
+      ],
+      "depends_on": ["T10"],
+      "files": ["README.md", "DECISIONS.md", "ai-logs/README.md"],
+      "steps": [
+        "README: prerequisites (Docker, Node 22), the 4 commands of §9.4, ports 4000 / 5173 / 5433, the test command, a table of error codes with HTTP status",
+        "README section 'Where to change the rules': table file -> what changes -> test to update, from context.code_conventions.rule_change_points",
+        "DECISIONS.md: six '## ' sections in the order Scope, Layers, Priority, Transitions, AI, Next, each answering its §12.1 prompt in short paragraphs",
+        "Draft Scope, Layers, Priority, Transitions and Next from what was built; start each with '<!-- AUTHOR: review and rewrite in your own words -->'",
+        "AI section: only '<!-- AUTHOR: fill in -->'. Scope lists extras attempted or skipped and the layout deviations (D-15); Next notes the pickup gap (D-07)",
+        "ai-logs/README.md: what the author must export, where, and the file naming scheme; do not create or edit any log file"
+      ],
+      "acceptance": [
+        "`grep -c '^## ' DECISIONS.md` prints 6 and the headings are Scope, Layers, Priority, Transitions, AI, Next in that order",
+        "The AI section body is exactly '<!-- AUTHOR: fill in -->' and `grep -c 'AUTHOR: review and rewrite' DECISIONS.md` prints 5",
+        "DECISIONS.md Transitions states that start on a preparing order returns 409 INVALID_TRANSITION; Layers names one rule kept out of the UI",
+        "README contains `docker compose up -d`, `npm install`, `npm run db:setup`, `npm run dev` and the ports 4000, 5173 and 5433",
+        "README lists VALIDATION_ERROR (400), ORDER_NOT_FOUND (404), INVALID_TRANSITION (409) and INTERNAL_ERROR (500)",
+        "Every file printed by `grep -rl '@rule-change' api/src` appears in the README table 'Where to change the rules'",
+        "`git status --short ai-logs` shows ai-logs/README.md as the only file this task added under ai-logs/"
+      ],
+      "tests": [],
+      "rule_change_surface": "A new or changed rule file must keep its row in the README table 'Where to change the rules'",
+      "explain_in_panel": "README says how to run and where to change rules; DECISIONS.md says why. The AI section and the chat logs are the author's own evidence, so the executor leaves them untouched"
+    },
+    {
+      "id": "T12",
+      "name": "Panel rehearsal: clean clone and change drill",
+      "summary": "Prove the §13 conditions: both apps boot from a clean clone with the 4 commands, and a ranking plus a status tweak touch only rules files and their tests",
+      "minutes": 15,
+      "optional": false,
+      "covers": ["REQ-41", "REQ-53", "REQ-55", "REQ-56"],
+      "depends_on": ["T11"],
+      "files": [],
+      "steps": [
+        "Precondition: the author has committed everything (`git status --short` is empty); stop the dev servers and run `docker compose down`",
+        "Clone the repository into a temp folder and run the 4 commands of §9.4 there, timing them; then stop, `docker compose down` and delete the clone",
+        "Back in the repository run `docker compose up -d`, `npm run db:setup` and `npm run dev`",
+        "On a throwaway branch drill/rule-change set typeWeights.dine_in to 35 and add cancel to preparing in TRANSITIONS; update the two matching tests",
+        "Run `npm test -w api` and `git diff --stat`; check in the browser that a preparing row now shows Cancel with no change under web/",
+        "Discard the drill: `git restore .`, switch back, `git branch -D drill/rule-change`, then `npm run db:setup`"
+      ],
+      "acceptance": [
+        "In the clean clone the 4 commands succeed and both localhost:4000/orders/queue and localhost:5173 respond within a few minutes",
+        "During the drill `npm test -w api` passes and `git diff --stat` lists exactly priority.rules.js, priority.test.js, transitions.js, transitions.test.js",
+        "During the drill a preparing row shows a Cancel button and clicking it removes the row",
+        "After the drill `git status --short` is empty, `git branch` shows no drill/rule-change and `npm test -w api` passes"
+      ],
+      "tests": [],
+      "rule_change_surface": "Proves the surface: one rules file plus its matching test per rule, and nothing in endpoints, repository or web",
+      "explain_in_panel": "This rehearses the two things §13 asks for: both apps boot fast from a clean clone, and a ranking or status tweak is a two-file change"
+    },
+    {
+      "id": "T13",
+      "name": "Extra: POST /orders (API only)",
+      "summary": "Optional §11.1: create an order through the API with module-level validation and a Jest test for validation errors; no UI form",
+      "minutes": 20,
+      "optional": true,
+      "covers": ["REQ-57"],
+      "depends_on": ["T12"],
+      "files": [
+        "api/src/modules/orders/orders.module.js",
+        "api/src/modules/orders/orders.module.test.js",
+        "api/src/repositories/orders.repository.js",
+        "api/src/endpoints/orders.endpoint.js",
+        "api/src/app.js",
+        "README.md",
+        "DECISIONS.md"
+      ],
+      "steps": [
+        "Write failing tests first for createOrder(deps, payload) with the fake repository and fixedClock",
+        "Validate the order fields: customer_name non-empty, type in ORDER_TYPES, is_vip boolean (default false), promised_at ISO timestamp or null",
+        "Validate items: non-empty array, each quantity a positive integer, each menu_item_id found by repository.findMenuItemsByIds; else VALIDATION_ERROR",
+        "Repository createOrder: insert the order (status received, placed_at = clock.now()) and its items in one transaction",
+        "Endpoint: express.json() and POST /orders -> 201 { id, status, placed_at }",
+        "Add the route to the README and mark the extra as attempted in the DECISIONS.md Scope draft"
+      ],
+      "acceptance": [
+        "`npm test -w api` passes with PostgreSQL stopped",
+        "A curl POST /orders with body {\"customer_name\":\"X\",\"type\":\"takeout\",\"items\":[]} returns 400 with error.code VALIDATION_ERROR",
+        "A valid POST /orders returns 201 and the new order appears in GET /orders/queue with status received"
+      ],
+      "tests": [
+        {
+          "file": "api/src/modules/orders/orders.module.test.js",
+          "framework": "jest",
+          "cases": [
+            "createOrder: empty or missing items throws VALIDATION_ERROR",
+            "createOrder: an unknown menu_item_id throws VALIDATION_ERROR",
+            "createOrder: quantity 0, -1, 1.5 or '2' throws VALIDATION_ERROR",
+            "createOrder: a valid payload is stored with status received and placed_at = clock.now()"
+          ]
+        }
+      ],
+      "rule_change_surface": null,
+      "explain_in_panel": "Validation is a business rule, so it sits in the Module and reuses ORDER_TYPES; the endpoint only parses JSON and returns 201"
+    },
+    {
+      "id": "T14",
+      "name": "Extra: Vitest component test",
+      "summary": "Optional §11.2: a component test of QueueTable for the empty state and for the cancel button, with its own fixtures",
+      "minutes": 15,
+      "optional": true,
+      "covers": ["REQ-58"],
+      "depends_on": ["T12"],
+      "files": [
+        "web/package.json",
+        "web/vite.config.ts",
+        "web/src/components/QueueTable.test.tsx",
+        "README.md",
+        "DECISIONS.md"
+      ],
+      "steps": [
+        "Install vitest, @testing-library/react and jsdom in web; set test.environment 'jsdom' in vite.config.ts; add the script test = vitest run",
+        "Render QueueTable with fixture items written in the test (not the seed) and assert on visible text and button roles",
+        "Add the command to the README and mark the extra as attempted in the DECISIONS.md Scope draft"
+      ],
+      "acceptance": [
+        "`npm test -w web` passes",
+        "`npm run build -w web` still exits 0"
+      ],
+      "tests": [
+        {
+          "file": "web/src/components/QueueTable.test.tsx",
+          "framework": "vitest",
+          "cases": [
+            "items = [] renders 'No orders in the queue'",
+            "Cancel is rendered for the received row (allowed_actions has cancel) and not for the preparing row"
+          ]
+        }
+      ],
+      "rule_change_surface": null,
+      "explain_in_panel": "The table is a pure view of its props, so the test passes fixtures and checks what is on screen; the cancel rule itself stays on the server"
+    },
+    {
+      "id": "T15",
+      "name": "Extra: Playwright end-to-end happy path",
+      "summary": "Optional §11.3: one browser test that starts preparation on a seeded order, with webServer booting the API and the web app",
+      "minutes": 20,
+      "optional": true,
+      "covers": ["REQ-59"],
+      "depends_on": ["T12"],
+      "files": [
+        "package.json",
+        "playwright.config.ts",
+        "e2e/queue.spec.ts",
+        "README.md",
+        "DECISIONS.md"
+      ],
+      "steps": [
+        "Install @playwright/test at the root; ask the author before running `npx playwright install chromium` (it downloads a browser)",
+        "playwright.config.ts: webServer array [API on :4000, web on :5173], each with command, url and reuseExistingServer true; use.baseURL :5173",
+        "Root script test:e2e = `npm run db:setup && playwright test`, so the seeded data is fresh; Postgres must already be up",
+        "Spec: open '/', take the first row that has a Start button, click it and expect the same data-order-id row to show status preparing",
+        "Add the command to the README; note the extra and the root e2e/ folder in the DECISIONS.md Scope draft"
+      ],
+      "acceptance": [
+        "With the dev servers stopped and Postgres up, `npm run test:e2e` exits 0 (Playwright boots both apps)",
+        "`npm run db:setup` afterwards restores the demo data"
+      ],
+      "tests": [
+        {
+          "file": "e2e/queue.spec.ts",
+          "framework": "playwright",
+          "cases": [
+            "the queue renders a seeded received order; Start is clicked; that row's status becomes preparing"
+          ]
+        }
+      ],
+      "rule_change_surface": null,
+      "explain_in_panel": "One happy path through the real stack; webServer starts both apps and db:setup resets the seed, so the test does not depend on leftover state"
+    }
+  ],
+  "rules_and_constraints": {
+    "do": [
+      "Trace every requirement to its PDF section and keep the PDF's exact identifiers: field names, enum values, routes, layer names, ports 4000 / 5173 / 5433",
+      "Follow the §9 stack: API in JavaScript (no TypeScript), web in TypeScript, Vitest and Playwright only in the extras",
+      "Keep exactly one repository with two apps (api, web); docker-compose starts PostgreSQL 16 only",
+      "Write the Module test before the implementation; tests use their own fixtures and a frozen now, never the seed",
+      "Run acceptance commands in bash (Git Bash on Windows); start servers in the background for curl checks and stop them afterwards",
+      "Use the versions in context.stack and the facts in context.doc_facts; if an installed API differs, stop and report",
+      "Record every author rejection or rewrite in one line of the task report under author_overrides",
+      "Explain every material deviation from the §14 layout in DECISIONS.md"
+    ],
+    "do_not": [
+      "Invent requirements, fields, endpoints, statuses, screens, error codes or dependencies beyond context.stack",
+      "Add what §3 and §14 exclude: auth, accounts, roles, payments, customer entity, pagination, WebSockets, Restify, Redis, background jobs, CI, Storybook",
+      "Put score, sorting, tie-break or transition rules in web/, in endpoints or in the repository",
+      "Call Date.now() or argument-less new Date() in computePriority, in tests, or anywhere in api/src except clock.js and the seeder",
+      "Use sequelize.sync()",
+      "Add state or data-fetching libraries to the web app (Redux, TanStack Query, SWR, axios); fetch plus one hook is enough",
+      "Create DI containers, generic base repositories, event buses, aggregates, value objects or a design-system package",
+      "Write the AI section of DECISIONS.md, or create, edit or summarize conversation logs in ai-logs/",
+      "Containerize the API or the web app, depend on a private or external repository, or push to a remote",
+      "Install, upgrade or switch machine software (Node, nvm, Docker, git, browsers); report what is missing and let the author do it",
+      "Start a §11 extra before T12 passes"
+    ],
+    "uncertainty_policy": "If the PDF and this file do not answer something that changes behavior, an API contract or a test expectation, stop and ask the author one question with 2-3 options and a recommendation; log the answer under author_overrides.",
+    "gate_policy": "After each task run every acceptance check and test, post the per-task report and wait for the author. Move on only when all pass. If a check fails twice, stop and report. For visible UI checks use a browser tool, else ask the author.",
+    "time_policy": "Report elapsed time against each task's minutes. If the core (T01-T12) is at risk, cut the extras first, then visual polish. Never cut the §10 tests, the README or DECISIONS.md. Stop when the 4-hour box is reached (§1).",
+    "allowed_assumptions": ["only decisions with decided_by=default"]
+  },
+  "output": {
+    "first_deliverable": "ai-logs/00-planning/PLAN.md rendered from tasks, then STOP for author approval",
+    "plan_md_columns": [
+      "ID",
+      "Task",
+      "Summary",
+      "Minutes",
+      "Covers",
+      "Acceptance",
+      "Tests"
+    ],
+    "per_task_report": {
+      "format": "markdown",
+      "fields": [
+        "task_id",
+        "status (done | blocked)",
+        "files_changed",
+        "commands_and_results",
+        "deviations",
+        "author_overrides",
+        "reminder (export session to ai-logs/ + commit message)"
+      ],
+      "max_chars": 1200
+    },
+    "final_report": {
+      "fields": [
+        "requirements_coverage_table",
+        "how_to_run (the 4 commands of §9.4)",
+        "rule_change_points (grep output)",
+        "extras_attempted_and_skipped",
+        "known_gaps",
+        "panel_readiness_checklist"
+      ],
+      "max_chars": 3000
+    }
+  }
+}
