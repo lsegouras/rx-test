@@ -6441,6 +6441,318 @@ The file C:\Users\lause\AppData\Local\Temp\claude\d--Laura-rx-test\baba9847-3f05
 S="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/export-session.js"; J="/c/Users/lause/.claude/projects/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6.jsonl"; node "$S" "$J" ai-logs/02-planning-session-plan-review.md 1 5 "AI log 02: plan review session" "\`ai-logs/00-planning/PLAN.md\`, rendered from the JSON plan and amended by the author in two review rounds, and the first commits" "Logs 02 and 03 are one Claude Code session, split after the planning files were committed." && node "$S" "$J" ai-logs/03-build-and-review-session.md 6 end "AI log 03: build and review session" "the application (tasks T01 to T15 of PLAN.md), then a full review of the repository and the fixes that came out of it" "Continues the session of log 02; prompt numbers continue from it."; echo "scan (expect 0): $(cat ai-logs/0[23]-*.md | grep -ciE 'oa''sis|Lau''G2|g2''tec|chat-ser''vice')"; git add ai-logs 2>/dev/null; git commit -q -m "ai-logs: add the log of the build and review session" 2>/dev/null; git log --oneline -1; echo "status lines: $(git status --short | wc -l)"; echo "ahead of origin: $(git rev-list --count origin/main..main)"
 ```
 
+Result:
+
+```text
+ai-logs/02-planning-session-plan-review.md: prompts 1-5, 79243 characters, 2 redactions
+ai-logs/03-build-and-review-session.md: prompts 6-12, 265838 characters, 62 redactions
+scan (expect 0): 0
+ebb69f5 ai-logs: add the log of the build and review session
+status lines: 0
+ahead of origin: 21
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Push the 21 local commits to the private GitHub repository, as approved in fix M3</summary>
+
+```bash
+GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main 2>&1 | tail -4; echo "push exit=${PIPESTATUS[0]}"; git status --short --branch | head -2
+```
+
+Result:
+
+```text
+To https://github.com/lsegouras/rx-test.git
+   ec45a00..ebb69f5  main -> main
+push exit=0
+## main...origin/main
+```
+
+</details>
+
+All the fixes from the table are in, verified, committed and pushed, except M2, which is yours to write. `main` is in sync with `origin/main` and the working tree is clean.
+
+## What changed
+
+| Fix | Result |
+| --- | --- |
+| E1 | `POST /orders` now answers 400 `VALIDATION_ERROR` for a name over 255 characters, an out-of-range `quantity` or `menu_item_id`, a body over 100 kB, malformed JSON and a malformed URL. I re-ran each case against the running API. Three test rows added. |
+| E2 | After an action the queue reloads with the filter selected at that moment. I reproduced the race in a browser with a delayed request: the table showed only preparing rows under the Preparing toggle. |
+| E3 | README no longer says every 4xx has the JSON body or that nothing else ever changes; it names the two limits and lists `e2e/`. Headers of three files corrected, and the literal scores are gone from the seed comments. |
+| E4 | The non-VIP assertion now checks an absolute score, so it can fail. |
+| M1 | `ai-logs/03-build-and-review-session.md` added; log 02 regenerated so it ends with a complete reply; `ai-logs/README.md` now describes the files instead of listing things for you to do. |
+| M3 | Six commits, pushed with the 15 earlier ones. Your DECISIONS.md rewrite went in as its own commit. |
+
+Current totals: 103 Jest tests, 3 Vitest, 1 Playwright, all passing; the build type-checks.
+
+## Decisions I made that you should know about
+
+- **Redactions in log 03:** the transcript contained names from other work on your machine: the other project's containers, your second GitHub account and a mail domain. I replaced 62 occurrences with `[other-project]`, `[other-account]` and `[other-domain]`, and the file header says so. Nothing else was altered. Tell me if you want the unredacted version instead.
+- **Push:** I pushed because M3 in the table you approved said "commit and push". I still treat pushing as something you ask for each time.
+- **Optional list:** I did not implement any of the nine optional items.
+
+## Still open
+
+- **M2, the AI section:** the "rejected" example still says the AI suggested database constraints for `status` and `type`, while log 02 shows you raised it and the assistant declined. Examples the logs do support: removing the `INTERNAL_ERROR` code, refusing the STATUS marker in `orders.module.test.js`, splitting `transitions.js` into rules and behaviour, and keeping T03 at 25 minutes.
+- **Log 03 ends partway through this reply.** After you fix M2, ask me to regenerate it and I'll commit it with your change; you then push once more.
+- **Your other project's Postgres is still stopped.** `docker compose down` here, then `docker start` on that container brings it back. This project's Postgres is up with fresh seed data; the dev servers are stopped.
+
+---
+
+## Prompt 13 (author)
+
+*Editor context attached automatically: `d:\Laura\rx-test\README.md` was open in the IDE.*
+
+```text
+After you review, have you resolved the following issues?
+
+1. Complete the AI logs
+`ai-logs/ should be completed with the implementation history and this review.
+
+2. Clean up the repository state
+Resolve all uncommitted changes, review the pending commits, and push the final approved history before submission. The repository should be clean and reproducible from the remote HEAD.
+
+3. Fix POST /orders client errors returning 500
+Validation mistakes made by the client should never become unexpected server errors. Invalid input for the optional POST /orders endpoint should return the appropriate 400 VALIDATION_ERROR instead of 500.
+
+4. Fix the frontend race condition
+You identified a real race condition in the frontend. Please treat this as a real bug, not a cosmetic improvement, and propose the smallest safe fix before submission.
+
+5. Clean up stale or inaccurate comments and headers
+Any file header or comment that no longer reflects the actual implementation should be corrected. Since the panel may ask about specific files, documentation inside the code must match the code exactly.
+
+6. Fix the assertion that cannot fail
+A test assertion that can never fail gives false confidence. Please replace or remove it so every test meaningfully protects behavior.
+```
+
+### Assistant
+
+<details>
+<summary>Tool: Bash: Check the repository against the six items: git sync, AI section, log coverage, and the headers of files changed by later tasks</summary>
+
+```bash
+echo "=== git"; git status --short --branch; git fetch -q origin 2>&1 | head -2; echo "local $(git rev-parse --short HEAD) remote $(git rev-parse --short origin/main)"; echo "=== AI section, rejected example"; awk '/^## AI/{f=1} /^## Next/{f=0} f' DECISIONS.md | grep -n 'rejected' | cut -c1-170; echo "=== logs"; grep -c '^## Prompt' ai-logs/03-build-and-review-session.md; tail -2 ai-logs/03-build-and-review-session.md | cut -c1-140; echo "=== headers and module-level doc of files touched by later tasks"; for f in api/src/endpoint/error.middleware.js api/src/module/orders.module.js api/src/module/status.rules.js api/src/module/priority.js api/src/repository/orders.repository.js api/src/endpoint/orders.endpoint.js; do echo "--- $f"; sed -n '1,6p' "$f" | cut -c1-150; done; echo "--- error middleware JSDoc"; sed -n '13,21p' api/src/endpoint/error.middleware.js; echo "--- parseOrderId"; grep -n -B1 -A6 'function parseOrderId' api/src/module/orders.module.js
+```
+
+Result:
+
+```text
+=== git
+## main...origin/main
+local ebb69f5 remote ebb69f5
+=== AI section, rejected example
+9:One AI suggestion I rejected and rewrote was: “Reduce five minutes from the Priority task to create more time-box slack.”
+=== logs
+7
+
+*This export was taken while the reply to the last prompt was still being written; the final text of that reply is not in it.*
+=== headers and module-level doc of files touched by later tasks
+--- api/src/endpoint/error.middleware.js
+/*
+ * error.middleware.js | Layer: Endpoint
+ * Turns errors into HTTP responses: one status per domain error code, one body shape.
+ * Must NOT send stack traces or internal details to the client.
+ */
+const { DomainError, ERROR_CODES } = require('../module/errors');
+--- api/src/module/orders.module.js
+/*
+ * orders.module.js | Layer: Module
+ * Use cases of the kitchen queue: assemble the ranked queue and apply a status action to an order.
+ * Must NOT import Express, Sequelize or the repository file, and must not read the clock:
+ * the repository and the clock arrive as arguments of createOrdersModule.
+ */
+--- api/src/module/status.rules.js
+/*
+ * status.rules.js | Layer: Module (rules data)
+ * The order state machine and the statuses of the active queue, as frozen tables (PDF §5, §6).
+ * Must NOT contain logic; transitions.js reads these tables.
+ * @rule-change STATUS: edit a row here and its matching expectation in transitions.test.js.
+ */
+--- api/src/module/priority.js
+/*
+ * priority.js | Layer: Module
+ * Pure functions that turn an order and a "now" into a priority score and a queue position.
+ * Must NOT read the clock, import Express or Sequelize, or hold numbers: they live in priority.rules.js.
+ */
+const { PRIORITY_RULES } = require('./priority.rules');
+--- api/src/repository/orders.repository.js
+/*
+... [31 more lines omitted]
+```
+
+</details>
+
+<details>
+<summary>Tool: Read: D:\Laura\rx-test\api\src\module\orders.module.js</summary>
+
+```json
+{
+  "file_path": "D:\\Laura\\rx-test\\api\\src\\module\\orders.module.js",
+  "limit": 48
+}
+```
+
+Result:
+
+```text
+1	/*
+2	 * orders.module.js | Layer: Module
+3	 * Use cases of the kitchen queue: assemble the ranked queue and apply a status action to an order.
+4	 * Must NOT import Express, Sequelize or the repository file, and must not read the clock:
+5	 * the repository and the clock arrive as arguments of createOrdersModule.
+6	 */
+7	const { ORDER_TYPES, computePriority, compareQueue, minutesWaiting } = require('./priority');
+8	const { ACTIVE_QUEUE_STATUSES, INITIAL_STATUS } = require('./status.rules');
+9	const { ACTIONS, allowedActions, transition } = require('./transitions');
+10	const { DomainError, ERROR_CODES } = require('./errors');
+11	
+12	/** Statuses to load: the active queue by default, or the single active status asked for. */
+13	function statusesFor(status) {
+14	  if (status === undefined) return ACTIVE_QUEUE_STATUSES;
+15	  if (!ACTIVE_QUEUE_STATUSES.includes(status)) {
+16	    throw new DomainError(
+17	      ERROR_CODES.VALIDATION_ERROR,
+18	      `status must be one of: ${ACTIVE_QUEUE_STATUSES.join(', ')}.`,
+19	    );
+20	  }
+21	  return [status];
+22	}
+23	
+24	/** A positive integer that fits the INTEGER id column, given as a number or as URL text. */
+25	function parseOrderId(id) {
+26	  if (!/^[1-9][0-9]{0,8}$/.test(String(id))) {
+27	    throw new DomainError(ERROR_CODES.VALIDATION_ERROR, 'Order id must be a positive integer.');
+28	  }
+29	  return Number(id);
+30	}
+31	
+32	// Limits of the columns that store these values: INTEGER and VARCHAR(255).
+33	// Checking them here answers 400 instead of letting the database fail with a 500.
+34	const MAX_INTEGER = 2147483647;
+35	const MAX_NAME_LENGTH = 255;
+36	
+37	const isPositiveInteger = (value) => Number.isInteger(value) && value > 0 && value <= MAX_INTEGER;
+38	
+39	function invalid(message) {
+40	  return new DomainError(ERROR_CODES.VALIDATION_ERROR, message);
+... [8 more lines omitted]
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Check when the AI section was corrected and view two tests that could pass on an empty queue</summary>
+
+```bash
+git log --format='%h %ad %s' --date=format:%H:%M -- DECISIONS.md | head -4; echo "rejected example in HEAD: $(git show HEAD:DECISIONS.md | grep -c 'Reduce five minutes')"; grep -n "minutes_waiting uses the same now" -A 8 api/src/module/orders.module.test.js | cut -c1-120; grep -n "allowed_actions of each item" -A 9 api/src/module/orders.module.test.js | cut -c1-120
+```
+
+Result:
+
+```text
+69b5aad 21:03 docs: rewrite DECISIONS.md in the author's words
+3257453 20:04 T15: Extra: Playwright end-to-end happy path
+f27388e 19:59 T14: Extra: Vitest component test
+a54b690 19:55 T13: Extra: POST /orders (API only)
+rejected example in HEAD: 1
+147:  test('minutes_waiting uses the same now as the score, read from the clock exactly once', async () => {
+148-    const clock = { now: jest.fn(() => FROZEN_NOW) };
+149-    const ordersModule = createOrdersModule({ repository: fakeRepository(ONE_PER_STATUS), clock });
+150-
+151-    const queue = await ordersModule.getQueue();
+152-
+153-    expect(queue.map((item) => item.minutes_waiting)).toEqual(queue.map(() => 35));
+154-    expect(clock.now).toHaveBeenCalledTimes(1);
+155-  });
+157:  test('allowed_actions of each item equals allowedActions(item.status)', async () => {
+158-    const { ordersModule } = setup();
+159-
+160-    const queue = await ordersModule.getQueue();
+161-
+162-    for (const item of queue) {
+163-      expect(item.allowed_actions).toEqual(allowedActions(item.status));
+164-    }
+165-  });
+166-});
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Fix the comments that went stale after later changes, use one integer limit for ids, and guard two tests against passing on an empty queue; then run Jest</summary>
+
+```bash
+node -e "
+const fs = require('fs');
+const edit = (file, pairs) => { let t = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n'); for (const [a, b] of pairs) { if (!t.includes(a)) { console.error('NOT FOUND in ' + file + ': ' + a.slice(0, 60)); process.exitCode = 1; continue; } t = t.replace(a, b); } fs.writeFileSync(file, t); };
+edit('api/src/module/orders.module.js', [
+[' * Use cases of the kitchen queue: assemble the ranked queue and apply a status action to an order.', ' * Use cases of the kitchen queue: assemble the ranked queue, apply a status action, create an order.'],
+[\"const { DomainError, ERROR_CODES } = require('./errors');\n\n/** Statuses to load\", \"const { DomainError, ERROR_CODES } = require('./errors');\n\n// Limits of the columns that store these values: INTEGER and VARCHAR(255).\n// Checking them here answers 400 instead of letting the database fail with a 500.\nconst MAX_INTEGER = 2147483647;\nconst MAX_NAME_LENGTH = 255;\n\n/** Statuses to load\"],
+[\"function parseOrderId(id) {\n  if (!/^[1-9][0-9]{0,8}\$/.test(String(id))) {\n    throw new DomainError(ERROR_CODES.VALIDATION_ERROR, 'Order id must be a positive integer.');\n  }\n  return Number(id);\n}\n\n// Limits of the columns that store these values: INTEGER and VARCHAR(255).\n// Checking them here answers 400 instead of letting the database fail with a 500.\nconst MAX_INTEGER = 2147483647;\nconst MAX_NAME_LENGTH = 255;\n\n\", \"function parseOrderId(id) {\n  const text = String(id);\n  if (!/^[1-9][0-9]*\$/.test(text) || Number(text) > MAX_INTEGER) {\n    throw new DomainError(ERROR_CODES.VALIDATION_ERROR, 'Order id must be a positive integer.');\n  }\n  return Number(text);\n}\n\n\"],
+]);
+edit('api/src/module/orders.module.test.js', [
+[\"test.each([['abc'], [0], [-1], [1.5]])('id %j is rejected with VALIDATION_ERROR'\", \"test.each([['abc'], [0], [-1], [1.5], ['2147483648']])('id %j is rejected with VALIDATION_ERROR'\"],
+[\"    expect(queue.map((item) => item.minutes_waiting)).toEqual(queue.map(() => 35));\", \"    expect(queue.length).toBeGreaterThan(0);\n    expect(queue.map((item) => item.minutes_waiting)).toEqual(queue.map(() => 35));\"],
+[\"    const queue = await ordersModule.getQueue();\n\n    for (const item of queue) {\", \"    const queue = await ordersModule.getQueue();\n\n    expect(queue.length).toBeGreaterThan(0);\n    for (const item of queue) {\"],
+]);
+edit('api/src/module/status.rules.js', [[' * The order state machine and the statuses of the active queue, as frozen tables (PDF §5, §6).', ' * The order state machine, the statuses of the active queue and the initial status, as frozen data (PDF §5, §6).']]);
+edit('api/src/module/priority.js', [[' * Must NOT read the clock, import Express or Sequelize, or hold numbers: they live in priority.rules.js.', ' * Must NOT read the clock, import Express or Sequelize, or hold rule values: they live in priority.rules.js.']]);
+edit('api/src/endpoint/error.middleware.js', [[' * A domain error answers { error: { code, message } } with its 4xx status. Anything else is\n * logged here and answered as a generic 500 with no code, because Express\'s own handler would\n * put the stack trace in the response outside production.', ' * A domain error answers { error: { code, message } } with its 4xx status. A request Express itself\n * rejected (invalid JSON, body too large, bad URL encoding) answers 400 VALIDATION_ERROR. Anything else\n * is logged and answered as a generic 500 with no code: Express\'s own handler would put the stack trace\n * in the response outside production.']]);
+edit('README.md', [['| Status: add, remove or redirect a transition; change which statuses are in the active queue |', '| Status: add, remove or redirect a transition; change which statuses are in the active queue; change the status a new order starts in |']]);
+" && sed -n '7,32p' api/src/module/orders.module.js && npm test 2>&1 | grep -E "^Tests:|^Test Suites:|●" | sort -u | head -6; grep -nE 'function|=>' api/src/module/status.rules.js; echo "data-only exit=$? (1 = ok)"; git status --short
+```
+
+Result:
+
+```text
+const { ORDER_TYPES, computePriority, compareQueue, minutesWaiting } = require('./priority');
+const { ACTIVE_QUEUE_STATUSES, INITIAL_STATUS } = require('./status.rules');
+const { ACTIONS, allowedActions, transition } = require('./transitions');
+const { DomainError, ERROR_CODES } = require('./errors');
+
+// Limits of the columns that store these values: INTEGER and VARCHAR(255).
+// Checking them here answers 400 instead of letting the database fail with a 500.
+const MAX_INTEGER = 2147483647;
+const MAX_NAME_LENGTH = 255;
+
+/** Statuses to load: the active queue by default, or the single active status asked for. */
+function statusesFor(status) {
+  if (status === undefined) return ACTIVE_QUEUE_STATUSES;
+  if (!ACTIVE_QUEUE_STATUSES.includes(status)) {
+    throw new DomainError(
+      ERROR_CODES.VALIDATION_ERROR,
+      `status must be one of: ${ACTIVE_QUEUE_STATUSES.join(', ')}.`,
+    );
+  }
+  return [status];
+}
+
+/** A positive integer that fits the INTEGER id column, given as a number or as URL text. */
+function parseOrderId(id) {
+  const text = String(id);
+  if (!/^[1-9][0-9]*$/.test(text) || Number(text) > MAX_INTEGER) {
+Test Suites: 3 passed, 3 total
+Tests:       104 passed, 104 total
+data-only exit=1 (1 = ok)
+ M README.md
+ M api/src/endpoint/error.middleware.js
+ M api/src/module/orders.module.js
+ M api/src/module/orders.module.test.js
+ M api/src/module/priority.js
+ M api/src/module/status.rules.js
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Commit the follow-up fixes, regenerate and commit log 03, push, and compare local and remote HEAD</summary>
+
+```bash
+git add api/src/module/orders.module.js api/src/module/orders.module.test.js 2>/dev/null && git commit -q -m "fix: use one integer limit for order ids and guard two tests against an empty queue" 2>/dev/null && git add README.md api/src/endpoint/error.middleware.js api/src/module/priority.js api/src/module/status.rules.js 2>/dev/null && git commit -q -m "docs: align file headers and comments with the final code" 2>/dev/null; S="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/export-session.js"; J="/c/Users/lause/.claude/projects/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6.jsonl"; node "$S" "$J" ai-logs/03-build-and-review-session.md 6 end "AI log 03: build and review session" "the application (tasks T01 to T15 of PLAN.md), then a full review of the repository and the fixes that came out of it" "Continues the session of log 02; prompt numbers continue from it."; echo "scan (expect 0): $(cat ai-logs/0[23]-*.md | grep -ciE 'oa''sis|Lau''G2|g2''tec|chat-ser''vice')"; git add ai-logs 2>/dev/null; git commit -q -m "ai-logs: update the log of the build and review session" 2>/dev/null; git log --oneline -3; echo "status lines: $(git status --short | wc -l)"; GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main 2>&1 | tail -2; echo "local $(git rev-parse --short HEAD) remote $(git ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7)"
+```
+
 Result: not yet recorded when this export was taken.
 
 </details>
