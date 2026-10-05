@@ -20,11 +20,13 @@ export function useQueue() {
   const [error, setError] = useState<ApiError | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const latestRequest = useRef(0);
+  // The filter on screen right now, readable by an action that started before it changed.
+  const currentFilter = useRef(filter);
 
-  const load = useCallback(async (currentFilter: QueueFilter) => {
+  const load = useCallback(async (filterToLoad: QueueFilter) => {
     const request = ++latestRequest.current;
     try {
-      const queue = await fetchQueue(currentFilter);
+      const queue = await fetchQueue(filterToLoad);
       // A slower, older response must not overwrite a newer one (e.g. after a quick filter change).
       if (request === latestRequest.current) setItems(queue);
     } catch (caught) {
@@ -35,6 +37,7 @@ export function useQueue() {
   }, []);
 
   useEffect(() => {
+    currentFilter.current = filter;
     setLoading(true);
     void load(filter);
   }, [filter, load]);
@@ -49,10 +52,11 @@ export function useQueue() {
         setError(caught as ApiError);
       }
       // Refetch whether it worked or not: the API is the only source of score, order and status.
-      await load(filter);
+      // Use the filter selected now, which may differ from the one selected when the action started.
+      await load(currentFilter.current);
       setPendingId(null);
     },
-    [filter, load],
+    [load],
   );
 
   const clearError = useCallback(() => setError(null), []);
