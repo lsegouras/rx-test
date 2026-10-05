@@ -1,6 +1,6 @@
 /*
  * status.rules.js | Layer: Module (rules data)
- * The order state machine and the statuses of the active queue, as frozen tables (PDF §5, §6).
+ * The order state machine, the statuses of the active queue and the initial status, as frozen data (PDF §5, §6).
  * Must NOT contain logic; transitions.js reads these tables.
  * @rule-change STATUS: edit a row here and its matching expectation in transitions.test.js.
  */

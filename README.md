@@ -95,7 +95,7 @@ Business rules live only in `api/src/module`. Each rule has one rules file (data
 | Change | Rules file | Test to update |
 | --- | --- | --- |
 | Ranking: a type weight, the VIP bonus, a cap or step of wait time or complexity, a promised-time bucket, the tie-break order | `api/src/module/priority.rules.js` | `api/src/module/priority.test.js` |
-| Status: add, remove or redirect a transition; change which statuses are in the active queue | `api/src/module/status.rules.js` | `api/src/module/transitions.test.js` |
+| Status: add, remove or redirect a transition; change which statuses are in the active queue; change the status a new order starts in | `api/src/module/status.rules.js` | `api/src/module/transitions.test.js` |
 
 For these changes nothing else needs to change. The routes are generated from the transition table, and the web app renders the buttons listed in each order's `allowed_actions`, so a new transition gets its route and its button with no edit in the endpoint or in `web/`.
 

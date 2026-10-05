@@ -1,7 +1,7 @@
 /*
  * priority.js | Layer: Module
  * Pure functions that turn an order and a "now" into a priority score and a queue position.
- * Must NOT read the clock, import Express or Sequelize, or hold numbers: they live in priority.rules.js.
+ * Must NOT read the clock, import Express or Sequelize, or hold rule values: they live in priority.rules.js.
  */
 const { PRIORITY_RULES } = require('./priority.rules');
 

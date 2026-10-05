@@ -13,9 +13,10 @@ const HTTP_STATUS = Object.freeze({
 
 /**
  * Express error handler; registered last in app.js.
- * A domain error answers { error: { code, message } } with its 4xx status. Anything else is
- * logged here and answered as a generic 500 with no code, because Express's own handler would
- * put the stack trace in the response outside production.
+ * A domain error answers { error: { code, message } } with its 4xx status. A request Express itself
+ * rejected (invalid JSON, body too large, bad URL encoding) answers 400 VALIDATION_ERROR. Anything else
+ * is logged and answered as a generic 500 with no code: Express's own handler would put the stack trace
+ * in the response outside production.
  * @see PDF §7
  */
 function errorMiddleware(err, req, res, next) {
