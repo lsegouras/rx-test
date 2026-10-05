@@ -1,6 +1,6 @@
 /*
  * orders.module.js | Layer: Module
- * Use cases of the kitchen queue: assemble the ranked queue and apply a status action to an order.
+ * Use cases of the kitchen queue: assemble the ranked queue, apply a status action, create an order.
  * Must NOT import Express, Sequelize or the repository file, and must not read the clock:
  * the repository and the clock arrive as arguments of createOrdersModule.
  */
@@ -8,6 +8,11 @@ const { ORDER_TYPES, computePriority, compareQueue, minutesWaiting } = require('
 const { ACTIVE_QUEUE_STATUSES, INITIAL_STATUS } = require('./status.rules');
 const { ACTIONS, allowedActions, transition } = require('./transitions');
 const { DomainError, ERROR_CODES } = require('./errors');
+
+// Limits of the columns that store these values: INTEGER and VARCHAR(255).
+// Checking them here answers 400 instead of letting the database fail with a 500.
+const MAX_INTEGER = 2147483647;
+const MAX_NAME_LENGTH = 255;
 
 /** Statuses to load: the active queue by default, or the single active status asked for. */
 function statusesFor(status) {
@@ -23,16 +28,12 @@ function statusesFor(status) {
 
 /** A positive integer that fits the INTEGER id column, given as a number or as URL text. */
 function parseOrderId(id) {
-  if (!/^[1-9][0-9]{0,8}$/.test(String(id))) {
+  const text = String(id);
+  if (!/^[1-9][0-9]*$/.test(text) || Number(text) > MAX_INTEGER) {
     throw new DomainError(ERROR_CODES.VALIDATION_ERROR, 'Order id must be a positive integer.');
   }
-  return Number(id);
+  return Number(text);
 }
-
-// Limits of the columns that store these values: INTEGER and VARCHAR(255).
-// Checking them here answers 400 instead of letting the database fail with a 500.
-const MAX_INTEGER = 2147483647;
-const MAX_NAME_LENGTH = 255;
 
 const isPositiveInteger = (value) => Number.isInteger(value) && value > 0 && value <= MAX_INTEGER;
 

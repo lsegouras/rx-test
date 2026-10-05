@@ -150,6 +150,7 @@ describe('getQueue', () => {
 
     const queue = await ordersModule.getQueue();
 
+    expect(queue.length).toBeGreaterThan(0);
     expect(queue.map((item) => item.minutes_waiting)).toEqual(queue.map(() => 35));
     expect(clock.now).toHaveBeenCalledTimes(1);
   });
@@ -159,6 +160,7 @@ describe('getQueue', () => {
 
     const queue = await ordersModule.getQueue();
 
+    expect(queue.length).toBeGreaterThan(0);
     for (const item of queue) {
       expect(item.allowed_actions).toEqual(allowedActions(item.status));
     }
@@ -166,7 +168,7 @@ describe('getQueue', () => {
 });
 
 describe('applyAction', () => {
-  test.each([['abc'], [0], [-1], [1.5]])('id %j is rejected with VALIDATION_ERROR', async (id) => {
+  test.each([['abc'], [0], [-1], [1.5], ['2147483648']])('id %j is rejected with VALIDATION_ERROR', async (id) => {
     const { ordersModule } = setup();
 
     await expect(ordersModule.applyAction(id, 'start')).rejects.toEqual(domainError('VALIDATION_ERROR'));
