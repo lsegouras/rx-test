@@ -1,6 +1,6 @@
 /*
  * orders.module.test.js | Layer: Module (test)
- * Tests queue assembly and applyAction with an in-memory fake repository and a fixed clock: no PostgreSQL.
+ * Tests getQueue, applyAction and createOrder with an in-memory fake repository and a fixed clock: no PostgreSQL.
  * Active statuses, scores and allowed actions are derived from the rules, so changing a weight, the active
  * queue or an allowed action does not edit this file. applyAction cases use received -> preparing as example.
  */

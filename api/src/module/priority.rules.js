@@ -1,6 +1,6 @@
 /*
  * priority.rules.js | Layer: Module (rules data)
- * Every number of the priority score and the tie-break order, as one frozen table (PDF §5.1, §5.2).
+ * Every weight, bonus, step, cap and bucket of the priority score, and the tie-break order, as one frozen table (PDF §5.1, §5.2).
  * Must NOT contain logic; priority.js reads this table.
  * @rule-change RANKING: edit a value here and its matching expectation in priority.test.js.
  */
