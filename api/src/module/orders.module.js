@@ -29,7 +29,12 @@ function parseOrderId(id) {
   return Number(id);
 }
 
-const isPositiveInteger = (value) => Number.isInteger(value) && value > 0;
+// Limits of the columns that store these values: INTEGER and VARCHAR(255).
+// Checking them here answers 400 instead of letting the database fail with a 500.
+const MAX_INTEGER = 2147483647;
+const MAX_NAME_LENGTH = 255;
+
+const isPositiveInteger = (value) => Number.isInteger(value) && value > 0 && value <= MAX_INTEGER;
 
 function invalid(message) {
   return new DomainError(ERROR_CODES.VALIDATION_ERROR, message);
@@ -52,6 +57,9 @@ function validateNewOrder(payload) {
 
   if (typeof customer_name !== 'string' || customer_name.trim() === '') {
     throw invalid('customer_name must be a non-empty string.');
+  }
+  if (customer_name.trim().length > MAX_NAME_LENGTH) {
+    throw invalid(`customer_name must have at most ${MAX_NAME_LENGTH} characters.`);
   }
   if (!ORDER_TYPES.includes(type)) throw invalid(`type must be one of: ${ORDER_TYPES.join(', ')}.`);
   if (typeof is_vip !== 'boolean') throw invalid('is_vip must be a boolean.');

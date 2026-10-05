@@ -1,8 +1,8 @@
 /*
  * orders.module.test.js | Layer: Module (test)
  * Tests queue assembly and applyAction with an in-memory fake repository and a fixed clock: no PostgreSQL.
- * Expectations about active statuses, scores and allowed actions are derived from the rules,
- * so a ranking or status rule change does not edit this file.
+ * Active statuses, scores and allowed actions are derived from the rules, so changing a weight, the active
+ * queue or an allowed action does not edit this file. applyAction cases use received -> preparing as example.
  */
 const { createOrdersModule } = require('./orders.module');
 const { computePriority, compareQueue } = require('./priority');
@@ -224,7 +224,7 @@ describe('createOrder', () => {
     await rejected(ordersModule, payload({ items: [{ menu_item_id: 999, quantity: 1 }] }));
   });
 
-  test.each([[0], [-1], [1.5], ['2']])('quantity %j is rejected with VALIDATION_ERROR', async (quantity) => {
+  test.each([[0], [-1], [1.5], ['2'], [2147483648]])('quantity %j is rejected with VALIDATION_ERROR', async (quantity) => {
     const { ordersModule } = setup([]);
 
     await rejected(ordersModule, payload({ items: [{ menu_item_id: 1, quantity }] }));
@@ -232,6 +232,8 @@ describe('createOrder', () => {
 
   test.each([
     ['an empty customer_name', { customer_name: '  ' }],
+    ['a customer_name longer than the column', { customer_name: 'A'.repeat(256) }],
+    ['a menu_item_id larger than the column', { items: [{ menu_item_id: 2147483648, quantity: 1 }] }],
     ['an unknown type', { type: 'banana' }],
     ['a non-boolean is_vip', { is_vip: 'yes' }],
     ['a promised_at that is not a timestamp', { promised_at: 'tomorrow' }],

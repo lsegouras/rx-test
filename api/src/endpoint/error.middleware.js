@@ -23,10 +23,12 @@ function errorMiddleware(err, req, res, next) {
   if (err instanceof DomainError) {
     return res.status(HTTP_STATUS[err.code]).json({ error: { code: err.code, message: err.message } });
   }
-  // express.json() could not parse the body: the request is invalid, not the server.
-  if (err.type === 'entity.parse.failed') {
+  // Express rejected the request before any route ran (body that is not valid JSON or is too
+  // large, bad URL encoding). It marks these with a 4xx status: the request is invalid, not the server.
+  if (err.status >= 400 && err.status < 500) {
     const code = ERROR_CODES.VALIDATION_ERROR;
-    return res.status(HTTP_STATUS[code]).json({ error: { code, message: 'The body must be valid JSON.' } });
+    const message = 'The request is malformed: check the URL and send a valid JSON body of normal size.';
+    return res.status(HTTP_STATUS[code]).json({ error: { code, message } });
   }
   console.error(err);
   return res.status(500).json({ error: { message: 'Internal server error' } });
