@@ -6753,6 +6753,204 @@ data-only exit=1 (1 = ok)
 git add api/src/module/orders.module.js api/src/module/orders.module.test.js 2>/dev/null && git commit -q -m "fix: use one integer limit for order ids and guard two tests against an empty queue" 2>/dev/null && git add README.md api/src/endpoint/error.middleware.js api/src/module/priority.js api/src/module/status.rules.js 2>/dev/null && git commit -q -m "docs: align file headers and comments with the final code" 2>/dev/null; S="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/export-session.js"; J="/c/Users/lause/.claude/projects/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6.jsonl"; node "$S" "$J" ai-logs/03-build-and-review-session.md 6 end "AI log 03: build and review session" "the application (tasks T01 to T15 of PLAN.md), then a full review of the repository and the fixes that came out of it" "Continues the session of log 02; prompt numbers continue from it."; echo "scan (expect 0): $(cat ai-logs/0[23]-*.md | grep -ciE 'oa''sis|Lau''G2|g2''tec|chat-ser''vice')"; git add ai-logs 2>/dev/null; git commit -q -m "ai-logs: update the log of the build and review session" 2>/dev/null; git log --oneline -3; echo "status lines: $(git status --short | wc -l)"; GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main 2>&1 | tail -2; echo "local $(git rev-parse --short HEAD) remote $(git ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7)"
 ```
 
+Result:
+
+```text
+ai-logs/03-build-and-review-session.md: prompts 6-13, 284814 characters, 62 redactions
+scan (expect 0): 0
+38ea914 ai-logs: update the log of the build and review session
+fd2ce86 docs: align file headers and comments with the final code
+5ae61d5 fix: use one integer limit for order ids and guard two tests against an empty queue
+status lines: 0
+To https://github.com/lsegouras/rx-test.git
+   ebb69f5..38ea914  main -> main
+local 38ea914 remote 38ea914
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Clone the repository from GitHub into a temp folder and run compose up, npm install and db:setup exactly as the README says</summary>
+
+```bash
+SCR="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad"; cd /d/Laura/rx-test && docker compose down 2>&1 | tail -1; rm -rf "$SCR/remote-clone"; START=$(date +%s); GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c credential.helper='!f() { test "$1" = get && echo username=lsegouras && echo "password=$(gh auth token --user lsegouras)"; }; f' clone -q https://lsegouras@github.com/lsegouras/rx-test.git "$SCR/remote-clone" 2>&1 | tail -2; cd "$SCR/remote-clone" && echo "cloned from GitHub at $(git rev-parse --short HEAD), $(git log --oneline | wc -l) commits, status lines: $(git status --short | wc -l)" && docker compose up -d 2>&1 | tail -1 && npm install 2>&1 | grep -E "added|ERR" | tail -1; echo "t+$(( $(date +%s) - START ))s npm install exit=${PIPESTATUS[0]}"; npm run db:setup 2>&1 | grep -E "migrated|ERROR|rror:" | tail -5; echo "t+$(( $(date +%s) - START ))s db:setup exit=${PIPESTATUS[0]}"
+```
+
+Result:
+
+```text
+ Network rx-test_default Removed 
+cloned from GitHub at 38ea914, 29 commits, status lines: 0
+ Container remote-clone-postgres-1 Started 
+added 558 packages, and audited 561 packages in 1m
+t+84s npm install exit=0
+== 01-create-menu-items: migrated (0.101s)
+== 02-create-orders: migrated (0.095s)
+== 03-create-order-items: migrated (0.060s)
+== 01-demo-data: migrated (0.082s)
+t+103s db:setup exit=0
+Shell cwd was reset to d:\Laura\rx-test
+```
+
+</details>
+
+The clone from GitHub installed and seeded cleanly (no waiting step, just the README commands). Starting both apps in that clone now to check they answer and the tests pass there.
+
+<details>
+<summary>Tool: Bash: Start both apps in the GitHub clone (background)</summary>
+
+```bash
+cd "/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/remote-clone" && npm run dev
+```
+
+Result:
+
+```text
+Command running in background with ID: blr6idkek. Output is being written to: C:\Users\lause\AppData\Local\Temp\claude\d--Laura-rx-test\baba9847-3f05-4809-accf-5d46293860d6\tasks\blr6idkek.output. You will be notified when it completes. To check interim output, use Read on that file path.
+Session cwd remains d:\Laura\rx-test; directory changes made by the backgrounded command do not apply to subsequent commands.
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Check both apps answer in the GitHub clone, re-probe the fixed error cases there and run its tests</summary>
+
+```bash
+SCR="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad"; START=$(date +%s); for i in $(seq 1 60); do A=$(curl -s -o /dev/null -w '%{http_code}' localhost:4000/orders/queue); W=$(curl -s -o /dev/null -w '%{http_code}' localhost:5173/); [ "$A" = 200 ] && [ "$W" = 200 ] && break; sleep 1; done; echo "clone: api=$A web=$W after $(( $(date +%s) - START ))s"; curl -s localhost:5173/orders/queue | node -e "const q=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log('queue via web:', q.length, 'orders, scores', q.map(o=>o.score).join(','))"; echo "--- former 500 cases"; LONG=$(node -e "process.stdout.write('A'.repeat(300))"); curl -s -o /dev/null -w 'long name=%{http_code} ' -X POST localhost:4000/orders -H 'Content-Type: application/json' -d "{\"customer_name\":\"$LONG\",\"type\":\"takeout\",\"items\":[{\"menu_item_id\":1,\"quantity\":1}]}"; curl -s -o /dev/null -w 'huge quantity=%{http_code} ' -X POST localhost:4000/orders -H 'Content-Type: application/json' -d '{"customer_name":"X","type":"takeout","items":[{"menu_item_id":1,"quantity":3000000000}]}'; curl -s -o /dev/null -w 'bad url=%{http_code} ' -X POST 'localhost:4000/orders/%E0%A4%A/start'; curl -s -o /dev/null -w 'id 1500000000=%{http_code} ' -X POST localhost:4000/orders/1500000000/start; curl -s -o /dev/null -w 'id 2147483648=%{http_code}\n' -X POST localhost:4000/orders/2147483648/start; cd "$SCR/remote-clone" && echo "jest: $(npm test 2>&1 | grep -E '^Tests:')"; echo "vitest: $(npm test -w web 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E 'Tests  ' | tr -s ' ')"
+```
+
+Result:
+
+```text
+clone: api=200 web=200 after 21s
+queue via web: 8 orders, scores 80,70,60,60,55,40,35,35
+--- former 500 cases
+long name=400 huge quantity=400 bad url=400 id 1500000000=404 id 2147483648=400
+jest: Tests:       104 passed, 104 total
+vitest:  Tests 3 passed (3)
+Shell cwd was reset to d:\Laura\rx-test
+```
+
+</details>
+
+<details>
+<summary>Tool: TaskStop</summary>
+
+```json
+{
+  "task_id": "blr6idkek"
+}
+```
+
+Result:
+
+```text
+{"message":"Successfully stopped task: blr6idkek (cd \"/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/remote-clone\" && npm run dev)","task_id":"blr6idkek","task_type":"local_bash","command":"cd \"/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/remote-clone\" && npm run dev"}
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Stop the clone's servers, remove the clone, and bring this repository's database back with fresh seed data</summary>
+
+```bash
+SCR="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad"; sleep 2; for p in 4000 5173; do for pid in $(netstat -ano | grep -E ":$p\s.*LISTENING" | awk '{print $NF}' | sort -u); do OUT=$(taskkill //F //T //PID $pid 2>&1); PARENT=$(echo "$OUT" | grep -oE 'PID [0-9]+\)' | grep -oE '[0-9]+' | head -1); [ -n "$PARENT" ] && taskkill //F //T //PID $PARENT >/dev/null 2>&1; done; done; sleep 2; for p in 4000 5173; do echo "port $p: $(netstat -ano | grep -cE ":$p\s.*LISTENING") listener(s)"; done; cd "$SCR/remote-clone" && docker compose down 2>&1 | tail -1; cd "$SCR" && rm -rf remote-clone; echo "clone removed: $([ -d remote-clone ] && echo no || echo yes)"; cd /d/Laura/rx-test && docker compose up -d 2>&1 | tail -1; for i in $(seq 1 20); do docker compose exec -T postgres pg_isready -U kitchen_queue >/dev/null 2>&1 && break; sleep 1; done; npm run db:setup 2>&1 | grep -cE "migrated"; git status --short --branch
+```
+
+Result:
+
+```text
+port 4000: 0 listener(s)
+port 5173: 0 listener(s)
+ Network remote-clone_default Removed 
+clone removed: yes
+ Container rx-test-postgres-1 Started 
+4
+## main...origin/main
+ M DECISIONS.md
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Show the author's new change to the AI section and find the matching passages in the logs</summary>
+
+```bash
+git diff DECISIONS.md 2>/dev/null | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | cut -c1-400; echo "=== structure: $(grep -c '^## ' DECISIONS.md) sections; AUTHOR markers: $(grep -c 'AUTHOR:' DECISIONS.md)"; echo "=== where the logs show these two ideas"; grep -nE 'I took 5 from T01|T03 25 -> 20|do not want to reduce T03|keep T03 at 25' ai-logs/02-planning-session-plan-review.md | cut -c1-150 | head -5; grep -nE 'scoped the check to all of|Keep the clock check scoped to the entire' ai-logs/02-planning-session-plan-review.md | cut -c1-150 | head -3
+```
+
+Result:
+
+```text
+-## AI
+-
+-One AI suggestion I rejected and rewrote was: “Reduce five minutes from the Priority task to create more time-box slack.”
++One AI suggestion I rejected and rewrote was: “Keep the transition rules and transition behavior together in `transitions.js`, with the STATUS change marker also appearing in the higher-level orders module test.”
+-I agreed with the goal of leaving more execution time inside the four-hour limit, but I did not agree with taking that time from the priority work. Ranking is one of the main evaluation areas of the exercise and contains several boundary conditions, caps, worked examples, and tie-break rules that need careful implementation and testing. I kept the Priority task at 25 minutes and accepted a 175-mi
++I rewrote that structure because the exercise explicitly evaluates how quickly a ranking or status rule can be changed during the live panel. I moved the declarative state-machine data and active-queue statuses into `status.rules.js`, kept transition behavior in `transitions.js`, and limited the primary `@rule-change STATUS` surface to the rules file and its dedicated transition test. Higher-leve
+=== structure: 6 sections; AUTHOR markers: 0
+=== where the logs show these two ideas
+350:- **Item 9:** the core ceilings now total 170 minutes. I took 5 from T01 (prerequisites are already verified) and 5 from T03.
+433:I agree with reducing the practical core budget to create more slack, but I do not want to reduce T03 Priority from 25 minutes.
+437:Please keep T03 at 25 minutes.
+1199:| A-09 | Time budget reworded: core maximum 180, extras estimated separately; T01 15 -> 10 (prerequisites already verified) and T03 25 -> 20, so 
+337:- **Item 10 (clock check):** the seed is no longer covered, as you asked. But I scoped the check to all of `api/src/module` rather than only `comp
+369:Keep the clock check scoped to the entire `api/src/module` layer, not only to `computePriority` and its tests.
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Show the headings of DECISIONS.md and the text from Transitions to the end</summary>
+
+```bash
+grep -n '^## ' DECISIONS.md; echo ---; awk '/^## Transitions/{f=1} f' DECISIONS.md | cut -c1-260
+```
+
+Result:
+
+```text
+3:## Scope
+19:## Layers
+31:## Priority
+39:## Transitions
+47:## AI
+57:## Next
+---
+## Transitions
+
+The state machine is enforced in the Module. `status.rules.js` contains the declarative transition table and the active-queue statuses, while `transition(order, action)` applies those rules. `allowed_actions` is derived from the same table and returned by the 
+
+`applyAction` first loads the order, then validates the requested transition, and finally performs a conditional update using both the order id and the previously validated status. If another request changes the order between the read and update, the zero-row 
+
+If `start` is requested for an order that is already `preparing`, the Module rejects it and the API returns HTTP 409 with `INVALID_TRANSITION`. The order is not modified, and the UI displays the API error and refetches the queue.
+
+## AI
+
+One AI suggestion I kept was: “Scope the ambient-clock check to the entire Module layer.”
+
+I initially considered restricting this check only to `computePriority` and its tests. I kept the broader suggestion because request-time business logic should not read the system clock directly. The Module receives time through the injected clock, keeping pri
+
+One AI suggestion I rejected and rewrote was: “Keep the transition rules and transition behavior together in `transitions.js`, with the STATUS change marker also appearing in the higher-level orders module test.”
+
+I rewrote that structure because the exercise explicitly evaluates how quickly a ranking or status rule can be changed during the live panel. I moved the declarative state-machine data and active-queue statuses into `status.rules.js`, kept transition behavior 
+
+## Next
+
+If this were going into a real kitchen next month, my first change would be production observability for API errors, transition failures, latency, and queue behavior so operational problems could be diagnosed quickly.
+
+My second change would be a controlled live-update mechanism so multiple kitchen screens stay synchronized without manual refreshes. I intentionally did not implement this because real-time updates are explicitly outside the scope of this exercise.
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Commit the author's AI-section change, regenerate and commit log 03, push, and confirm local and remote match</summary>
+
+```bash
+git add DECISIONS.md 2>/dev/null && git commit -q -m "docs: update the AI section of DECISIONS.md" 2>/dev/null; S="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/export-session.js"; J="/c/Users/lause/.claude/projects/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6.jsonl"; node "$S" "$J" ai-logs/03-build-and-review-session.md 6 end "AI log 03: build and review session" "the application (tasks T01 to T15 of PLAN.md), then a full review of the repository and the fixes that came out of it" "Continues the session of log 02; prompt numbers continue from it."; echo "scan (expect 0): $(cat ai-logs/0[23]-*.md | grep -ciE 'oa''sis|Lau''G2|g2''tec|chat-ser''vice')"; git add ai-logs 2>/dev/null; git commit -q -m "ai-logs: update the log of the build and review session" 2>/dev/null; GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main 2>&1 | tail -1; echo "local $(git rev-parse --short HEAD) remote $(git ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7) | status lines: $(git status --short | wc -l) | commits: $(git log --oneline | wc -l)"; echo "prompts in log 03: $(grep -c '^## Prompt' ai-logs/03-build-and-review-session.md)"; echo "jest: $(npm test 2>&1 | grep -E '^Tests:')"; docker compose ps --format '{{.Service}} {{.Status}} {{.Ports}}' | cut -c1-70
+```
+
 Result: not yet recorded when this export was taken.
 
 </details>
