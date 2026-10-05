@@ -6951,6 +6951,89 @@ My second change would be a controlled live-update mechanism so multiple kitchen
 git add DECISIONS.md 2>/dev/null && git commit -q -m "docs: update the AI section of DECISIONS.md" 2>/dev/null; S="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/export-session.js"; J="/c/Users/lause/.claude/projects/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6.jsonl"; node "$S" "$J" ai-logs/03-build-and-review-session.md 6 end "AI log 03: build and review session" "the application (tasks T01 to T15 of PLAN.md), then a full review of the repository and the fixes that came out of it" "Continues the session of log 02; prompt numbers continue from it."; echo "scan (expect 0): $(cat ai-logs/0[23]-*.md | grep -ciE 'oa''sis|Lau''G2|g2''tec|chat-ser''vice')"; git add ai-logs 2>/dev/null; git commit -q -m "ai-logs: update the log of the build and review session" 2>/dev/null; GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main 2>&1 | tail -1; echo "local $(git rev-parse --short HEAD) remote $(git ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7) | status lines: $(git status --short | wc -l) | commits: $(git log --oneline | wc -l)"; echo "prompts in log 03: $(grep -c '^## Prompt' ai-logs/03-build-and-review-session.md)"; echo "jest: $(npm test 2>&1 | grep -E '^Tests:')"; docker compose ps --format '{{.Service}} {{.Status}} {{.Ports}}' | cut -c1-70
 ```
 
+Result:
+
+```text
+ai-logs/03-build-and-review-session.md: prompts 6-13, 298369 characters, 62 redactions
+scan (expect 0): 0
+   38ea914..c9fe8e6  main -> main
+local c9fe8e6 remote c9fe8e6 | status lines: 0 | commits: 31
+prompts in log 03: 8
+jest: Tests:       104 passed, 104 total
+postgres Up About a minute 0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+```
+
+</details>
+
+Everything is committed and pushed (local and remote both at `c9fe8e6`). One last pass before I answer item 5: reading every file header once more against the final code.
+
+<details>
+<summary>Tool: Bash: Print the header comment of every source file for a final read against the code</summary>
+
+```bash
+for f in $(git ls-files 'api/src/*.js' 'api/src/**/*.js' 'api/.sequelizerc' 'web/src/*.ts*' 'web/src/**/*.ts*' 'web/vite.config.ts' 'e2e/*.ts' 'playwright.config.ts' | sort -u); do echo "## $f"; awk 'NR<=7 && /^(\/\*| \*|\/\/)/ && !/^ \*\/$/ {print}' "$f" | sed '1d' | cut -c1-175; done
+```
+
+Result:
+
+```text
+## api/.sequelizerc
+// Tells sequelize-cli where the Schema layer keeps its config, models, migrations and seeders.
+## api/src/app.js
+ * app.js | Layer: none (composition root)
+ * The one place that wires the layers: repository + clock -> module -> endpoint -> Express app.
+ * Must NOT hold routes, queries or business rules.
+## api/src/clock.js
+ * clock.js | Layer: none (composition)
+ * The real clock of the running app. app.js injects it into the Module.
+ * Must NOT be required by the Module; tests inject a fixed clock instead.
+/** Reads the system time; the result is a UTC instant. @see PDF §5 */
+## api/src/config.js
+ * config.js | Layer: none (shared configuration)
+ * Reads the environment once; every default equals the docker-compose.yml values.
+ * Must NOT hold business rules or open a database connection.
+/**
+## api/src/endpoint/error.middleware.js
+ * error.middleware.js | Layer: Endpoint
+ * Turns errors into HTTP responses: one status per domain error code, one body shape.
+ * Must NOT send stack traces or internal details to the client.
+## api/src/endpoint/orders.endpoint.js
+ * orders.endpoint.js | Layer: Endpoint
+ * HTTP only: reads the request, calls one function of the orders module, writes the JSON response.
+ * Must NOT score, sort, decide whether a transition is legal, or reach the database.
+## api/src/module/errors.js
+ * errors.js | Layer: Module
+ * The domain error and its stable, machine-readable codes (PDF §7).
+ * Must NOT know HTTP statuses; the error middleware maps each code to one.
+/** The only error codes the API returns. Documented in the README. @see PDF §7 */
+## api/src/module/orders.module.js
+ * orders.module.js | Layer: Module
+ * Use cases of the kitchen queue: assemble the ranked queue, apply a status action, create an order.
+ * Must NOT import Express, Sequelize or the repository file, and must not read the clock:
+ * the repository and the clock arrive as arguments of createOrdersModule.
+## api/src/module/orders.module.test.js
+ * orders.module.test.js | Layer: Module (test)
+ * Tests queue assembly and applyAction with an in-memory fake repository and a fixed clock: no PostgreSQL.
+ * Active statuses, scores and allowed actions are derived from the rules, so changing a weight, the active
+ * queue or an allowed action does not edit this file. applyAction cases use received -> preparing as example.
+## api/src/module/priority.js
+... [123 more lines omitted]
+```
+
+</details>
+
+<details>
+<summary>Tool: Bash: Correct two file headers, rerun Jest, commit, refresh the log and push</summary>
+
+```bash
+node -e "
+const fs = require('fs');
+const edit = (file, a, b) => { let t = fs.readFileSync(file, 'utf8'); if (!t.includes(a)) { console.error('NOT FOUND in ' + file); process.exit(1); } fs.writeFileSync(file, t.replace(a, b)); };
+edit('api/src/module/orders.module.test.js', ' * Tests queue assembly and applyAction with an in-memory fake repository and a fixed clock: no PostgreSQL.', ' * Tests getQueue, applyAction and createOrder with an in-memory fake repository and a fixed clock: no PostgreSQL.');
+edit('api/src/module/priority.rules.js', ' * Every number of the priority score and the tie-break order, as one frozen table (PDF §5.1, §5.2).', ' * Every weight, bonus, step, cap and bucket of the priority score, and the tie-break order, as one frozen table (PDF §5.1, §5.2).');
+" && echo "jest: $(npm test 2>&1 | grep -E '^Tests:')" && echo "markers: $(grep -rl '@rule-change' api/src | wc -l) files" && git add api/src/module/orders.module.test.js api/src/module/priority.rules.js 2>/dev/null && git commit -q -m "docs: make two file headers describe exactly what the files hold" 2>/dev/null; S="/c/Users/lause/AppData/Local/Temp/claude/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6/scratchpad/export-session.js"; J="/c/Users/lause/.claude/projects/d--Laura-rx-test/baba9847-3f05-4809-accf-5d46293860d6.jsonl"; node "$S" "$J" ai-logs/03-build-and-review-session.md 6 end "AI log 03: build and review session" "the application (tasks T01 to T15 of PLAN.md), then a full review of the repository and the fixes that came out of it" "Continues the session of log 02; prompt numbers continue from it." >/dev/null; echo "scan (expect 0): $(cat ai-logs/0[23]-*.md | grep -ciE 'oa''sis|Lau''G2|g2''tec|chat-ser''vice')"; git add ai-logs 2>/dev/null; git commit -q -m "ai-logs: update the log of the build and review session" 2>/dev/null; GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main 2>&1 | tail -1; echo "local $(git rev-parse --short HEAD) remote $(git ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7) | status lines: $(git status --short | wc -l)"
+```
+
 Result: not yet recorded when this export was taken.
 
 </details>
