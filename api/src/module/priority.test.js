@@ -74,9 +74,9 @@ describe('score components (PDF §5.1)', () => {
     expect(score({ type })).toBe(points);
   });
 
-  test('VIP adds 20; non-VIP adds 0', () => {
+  test('VIP adds 20; a non-VIP order scores only its other points', () => {
     expect(pointsAdded({ is_vip: true })).toBe(20);
-    expect(pointsAdded({ is_vip: false })).toBe(0);
+    expect(score({ type: 'dine_in', is_vip: false })).toBe(30);
   });
 
   test.each([
