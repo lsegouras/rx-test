@@ -2,69 +2,62 @@
 
 ## Scope
 
-<!-- AUTHOR: review and rewrite in your own words -->
+I implemented the full required core: the active queue with status filtering, the four transition endpoints, the Kitchen Display page, migrations, relative-time seed data, and the required Jest tests for priority and transitions. The README documents the four startup commands, ports, and API error codes.
 
-I built the full required core: the queue endpoint with the status filter, the four transition endpoints, the Kitchen Display page, the migrations, a seed with relative dates, and the Jest tests for priority and transitions. The README lists the four commands and the error codes.
+I intentionally kept the solution small and explainable within the four-hour time box. I did not add automatic queue refresh or PostgreSQL integration tests; Module behavior is tested with an in-memory fake repository, while repository and endpoint behavior were verified with `psql` and `curl`.
 
-I kept the result small on purpose. I left out a button for `pickup` on the screen, automatic refresh of the queue, and integration tests against PostgreSQL. The Module tests run against an in-memory fake repository instead, and I checked the repository and the endpoints by hand with `curl` and `psql`.
+`pickup` is supported by the API and covered by transition tests, but it is not shown on the Kitchen Display because `ready` orders are outside the active queue defined by the exercise.
 
-Extra points:
+Optional extras:
 
-- POST /orders (§11.1): attempted. The validation lives in the Module and is covered by Jest tests; there is no UI form.
-- Vitest component test (§11.2): attempted. It covers the empty state and proves that the buttons follow `allowed_actions`, not the status.
-- Playwright end-to-end (§11.3): attempted. One happy path; `npm run test:e2e` reseeds the database and boots both apps through Playwright's `webServer`.
+- POST /orders (§11.1): implemented with Module validation and Jest coverage; no UI form.
+- Vitest component test (§11.2): implemented for the empty state and to prove that buttons follow `allowed_actions`, not frontend status rules.
+- Playwright (§11.3): implemented as one seeded happy path; `npm run test:e2e` boots both apps through Playwright's `webServer`.
 
-Layout deviations from §14:
-
-- The API layer folders are named after the §9.1 layers: `endpoint/`, `module/`, `repository/`, `schema/`.
-- Each test file sits next to the module file it tests. A rule and its test are then side by side, which is where I want them during the live change.
-- `docs/` holds the take-home brief, and `ai-logs/00-planning/` holds the planning prompt output and the plan. They are part of the AI evidence.
-- `e2e/` and `playwright.config.ts` sit at the root, because the end-to-end test drives both apps.
+Layout deviations from §14 are small and intentional: API folders use the §9.1 layer names (`endpoint/`, `module/`, `repository/`, `schema/`), tests sit next to the code they protect, `docs/` contains the exercise brief, `ai-logs/00-planning/` contains planning artifacts, and the cross-application Playwright files live at the repository root.
 
 ## Layers
 
-<!-- AUTHOR: review and rewrite in your own words -->
+The Module (`api/src/module`) owns business behavior: priority scoring, queue ordering, transitions, active-queue statuses, and input validation. Ranking and lifecycle configuration live in `priority.rules.js` and `status.rules.js`. The Module does not import Express or Sequelize and receives its repository and clock from `app.js`.
 
-The Module (`api/src/module`) holds every business rule: the score, the sort and tie-break, the state machine, which statuses are in the active queue, and input validation. The rules are data in two files, `priority.rules.js` and `status.rules.js`; the functions next to them only read those tables. The Module does not import Express or Sequelize and does not read the clock. `app.js` gives it a repository and a clock, so the same code runs on PostgreSQL in the app and on a fake in tests.
+The Repository (`api/src/repository`) contains Sequelize access only. It loads queue data with the required associations in one query and returns plain data to the Module. It does not decide which statuses are active or how orders are ranked.
 
-The Repository (`api/src/repository`) only translates between Sequelize and plain objects. It reads the queue in one query with the items and menu items included, and it receives the statuses to load as an argument. It does not know which statuses are active and it does not sort by priority.
+The Endpoint layer handles HTTP only: it reads the request, calls the Module, and writes the response. Centralized middleware maps the known application errors to their HTTP responses.
 
-The Endpoint receives only the orders module. It reads the request, calls one function and writes the JSON. One middleware maps the three domain error codes to HTTP statuses.
+The Schema layer contains models, migrations, and seed data. PostgreSQL enforces structural invariants such as foreign keys, NOT NULL constraints, unique menu-item names, positive quantities and preparation times, and valid categories. `status` and `type` remain VARCHAR values validated from domain constants, so lifecycle changes do not require a database migration.
 
-The Schema holds the models, the migrations and the seed. The database enforces the structural rules: foreign keys, NOT NULL, the unique menu item name, `quantity > 0`, `prep_time_minutes > 0` and the category values. `status` and `type` are plain VARCHAR columns, and the model validation reuses the constants owned by the Module. A status rule can then change without a migration.
-
-The UI shows what the API returns, in the order the API returns it. The rule I refused to put in the UI is "which actions are valid for a status". The obvious shortcut is `if (status === 'received')` to show Start and Cancel. That would be a second copy of the state machine, and it would go stale the moment a transition changes. Instead, each queue item carries `allowed_actions`, computed from the transition table, and the table renders one button per entry. The score and the sort are not in the UI either.
+The rule I deliberately kept out of the UI is transition legality. The frontend does not infer actions from `status`; it renders the `allowed_actions` returned by the API. This avoids duplicating the state machine in React. Priority and queue ordering also remain exclusively server-side.
 
 ## Priority
 
-<!-- AUTHOR: review and rewrite in your own words -->
+The priority score is calculated at request time and is never stored. The Module reads one UTC `now` from the injected clock and uses that same value for both `computePriority(order, now)` and `minutes_waiting`.
 
-The score is never stored. On each `GET /orders/queue` the Module reads the clock once, loads the active orders, and calls `computePriority(order, now)` for each one. That function is pure: it takes the order and `now` and returns a number. Every number of the formula (weights, caps, steps, promised-time buckets) comes from one frozen table, `PRIORITY_RULES`, which reads like the table in §5.1. The queue is then sorted by `compareQueue`: score descending, then earlier `promised_at` with null last, then earlier `placed_at`, then smaller id. `minutes_waiting` in the response uses the same `now` as the score, so the screen cannot show a wait time that disagrees with the points.
+`computePriority` is a pure function. All weights, caps, steps, and promised-time buckets come from the declarative `PRIORITY_RULES` configuration. `compareQueue` then applies the required ordering: score descending, earlier `promised_at` with null last, earlier `placed_at`, and finally smaller id.
 
-The edge case that was easy to get wrong is the promised-time bucket. §5.1 says "within 30 minutes" and "within 31-60 minutes", which leaves a gap between 30 and 31 minutes and says nothing about an order whose promised time has already passed. I compare the difference in milliseconds: up to 30 minutes scores 25, more than 30 and up to 60 scores 15, anything else scores 0. So +30:00 scores 25, +30:30 scores 15 and +60:01 scores 0. An overdue order has a negative difference, so it scores 25. A late order must not drop in the queue.
-
-Two smaller ones. Wait time is floored to whole minutes before the division, so 9 min 50 s is 9 minutes and scores 0. And the wait is never negative: if `placed_at` is slightly ahead of the app clock, the order scores 0 wait points, not -5.
+The easiest edge case to get wrong was the promised-time boundary. I use the exact time difference: up to 30 minutes receives 25 points, more than 30 and up to 60 receives 15, and beyond 60 receives 0. Therefore +30:00 scores 25, +30:30 scores 15, and +60:01 scores 0. An overdue promised time receives 25 points because it is already inside the most urgent window.
 
 ## Transitions
 
-<!-- AUTHOR: review and rewrite in your own words -->
+The state machine is enforced in the Module. `status.rules.js` contains the declarative transition table and the active-queue statuses, while `transition(order, action)` applies those rules. `allowed_actions` is derived from the same table and returned by the API, giving both the API and UI one source of truth.
 
-The state machine is enforced on the server, in the Module. `status.rules.js` holds one table: for each status, the actions it allows and the status each action leads to. `transition(order, action)` returns the next status or throws `INVALID_TRANSITION`. The POST routes are generated from the action names in that table, and `allowed_actions` comes from the same table, so there is one source for what is legal.
+`applyAction` first loads the order, then validates the requested transition, and finally performs a conditional update using both the order id and the previously validated status. If another request changes the order between the read and update, the zero-row update is treated as `INVALID_TRANSITION`.
 
-`applyAction` does three steps: load the order (404 `ORDER_NOT_FOUND` if it does not exist), call `transition()`, then run `UPDATE ... WHERE id = ? AND status = <the status just validated>`. If that update changes 0 rows, another request moved the order first, and the answer is also `INVALID_TRANSITION`. Two expeditors clicking Start at the same time cannot both succeed, and no lock is needed.
-
-When someone tries to start an order that is already `preparing`, the API answers `409 INVALID_TRANSITION` with the message "Cannot start an order that is preparing." The order is not changed. It is an error, not a silent success. On the screen the error appears in an alert above the table and the queue is fetched again, so the stale row is corrected.
+If `start` is requested for an order that is already `preparing`, the Module rejects it and the API returns HTTP 409 with `INVALID_TRANSITION`. The order is not modified, and the UI displays the API error and refetches the queue.
 
 ## AI
 
-<!-- AUTHOR: fill in -->
+## AI
+
+One AI suggestion I kept was: “Scope the ambient-clock check to the entire Module layer.”
+
+I initially considered restricting this check only to `computePriority` and its tests. I kept the broader suggestion because request-time business logic should not read the system clock directly. The Module receives time through the injected clock, keeping priority calculation, `minutes_waiting`, and tests deterministic and consistent. The seed is intentionally excluded because the exercise requires its dates to be relative to the real UTC time when it runs.
+
+One AI suggestion I rejected and rewrote was: “Reduce five minutes from the Priority task to create more time-box slack.”
+
+I agreed with the goal of leaving more execution time inside the four-hour limit, but I did not agree with taking that time from the priority work. Ranking is one of the main evaluation areas of the exercise and contains several boundary conditions, caps, worked examples, and tie-break rules that need careful implementation and testing. I kept the Priority task at 25 minutes and accepted a 175-minute core estimate instead of reducing time from one of the highest-risk parts of the implementation.
 
 ## Next
 
-<!-- AUTHOR: review and rewrite in your own words -->
+If this were going into a real kitchen next month, my first change would be production observability for API errors, transition failures, latency, and queue behavior so operational problems could be diagnosed quickly.
 
-If this had to run in a real kitchen next month, these are the first two changes I would make.
-
-1. A view for `ready` orders with the pickup action. Today a `ready` order leaves the queue, as §5 requires, and the filter only accepts `received` or `preparing`. `POST /orders/:id/pickup` exists and is tested, but no row on the screen can offer it. The expeditor needs to see what is waiting at the pass and close it.
-
-2. Live refresh. Scores change every minute, and other people change orders. Today the page refetches only after an action or a filter change, so a screen left open goes stale. I would start with polling every few seconds, because it is simple and enough for one kitchen, and move to server push only if several screens need to stay in sync.
+My second change would be a controlled live-update mechanism so multiple kitchen screens stay synchronized without manual refreshes. I intentionally did not implement this because real-time updates are explicitly outside the scope of this exercise.
