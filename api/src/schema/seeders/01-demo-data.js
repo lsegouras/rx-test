@@ -14,11 +14,11 @@ const MENU_ITEMS = [
   { name: 'Lemonade', category: 'drink', prep_time_minutes: 2 },
 ];
 
-/** Orders of the demo. items are [menu item name, quantity]. Scores in the comments are at seed time. */
+/** Orders of the demo. items are [menu item name, quantity]. */
 function demoOrders(minutesAgo, minutesFromNow) {
   return [
     // Tie on score broken by promised_at: same type, VIP flag, items and placed_at as Fabio.
-    // Both score 35; Elisa has a promised_at (too far away to score), so she ranks above Fabio.
+    // Their scores are equal; Elisa has a promised_at (too far away to add points), so she ranks above Fabio.
     {
       customer_name: 'Fabio Nunes',
       type: 'takeout',
@@ -37,7 +37,7 @@ function demoOrders(minutesAgo, minutesFromNow) {
       promised_at: minutesFromNow(180),
       items: [['Margherita Pizza', 1], ['Chocolate Cake', 1]],
     },
-    // Wait-time cap: placed 2 hours ago, so wait points are at the maximum of 40. dine_in, non-VIP. Score 70.
+    // Wait-time cap: placed 2 hours ago, so wait points are at their maximum. dine_in, non-VIP.
     {
       customer_name: 'Ana Souza',
       type: 'dine_in',
@@ -47,7 +47,7 @@ function demoOrders(minutesAgo, minutesFromNow) {
       promised_at: null,
       items: [['Caesar Salad', 1]],
     },
-    // Complexity cap: 62 total prep minutes, so complexity points are at the maximum of 20. takeout. Score 55.
+    // Complexity cap: 62 total prep minutes, so complexity points are at their maximum. takeout.
     {
       customer_name: 'Bruno Lima',
       type: 'takeout',
@@ -57,7 +57,7 @@ function demoOrders(minutesAgo, minutesFromNow) {
       promised_at: minutesFromNow(45),
       items: [['Grilled Salmon', 3], ['Lemonade', 1]],
     },
-    // PDF §5.3 example B: delivery, VIP, promised in 20 minutes. Score 60.
+    // PDF §5.3 example B: delivery, VIP, promised in 20 minutes.
     {
       customer_name: 'Carla Mendes',
       type: 'delivery',
@@ -67,7 +67,7 @@ function demoOrders(minutesAgo, minutesFromNow) {
       promised_at: minutesFromNow(20),
       items: [['Margherita Pizza', 1]],
     },
-    // PDF §5.3 example A: dine_in, non-VIP, no promise. Score 60, below Carla on the tie-break.
+    // PDF §5.3 example A: dine_in, non-VIP, no promise. Ties with Carla at seed time and ranks below her.
     {
       customer_name: 'Diego Alves',
       type: 'dine_in',
@@ -77,7 +77,7 @@ function demoOrders(minutesAgo, minutesFromNow) {
       promised_at: null,
       items: [['Grilled Salmon', 2], ['Caesar Salad', 1]],
     },
-    // preparing, in the active queue: dine_in VIP. Score 80, the top of the queue.
+    // preparing, in the active queue: dine_in VIP, the top of the queue at seed time.
     {
       customer_name: 'Gabriela Dias',
       type: 'dine_in',
@@ -87,7 +87,7 @@ function demoOrders(minutesAgo, minutesFromNow) {
       promised_at: null,
       items: [['Margherita Pizza', 2]],
     },
-    // preparing, in the active queue: delivery, non-VIP. Score 40.
+    // preparing, in the active queue: delivery, non-VIP.
     {
       customer_name: 'Hugo Prado',
       type: 'delivery',

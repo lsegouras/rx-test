@@ -1,6 +1,6 @@
 /*
  * order.js | Layer: Schema (model)
- * Sequelize model of orders (PDF §4.2). placed_at and status get their defaults from the database.
+ * Sequelize model of orders (PDF §4.2). The database has defaults for placed_at and status; the Module sends both.
  * Must NOT list statuses or types: the validation reuses domain constants owned by the Module.
  */
 const { DataTypes } = require('sequelize');

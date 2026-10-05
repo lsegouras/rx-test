@@ -1,7 +1,8 @@
 /*
  * types.ts | Layer: Web
  * Shapes of what the API sends. They mirror the queue item of GET /orders/queue field by field.
- * Must NOT list statuses, types or actions: those values are owned by the API.
+ * Must NOT list the statuses, types or actions an order can have (the API owns them);
+ * the only exception is QueueFilter, the filter values the page offers (PDF §8).
  */
 
 /** One row of the queue, exactly as the API returns it. @see PDF §7, §8 */

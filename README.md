@@ -78,11 +78,11 @@ Body of `POST /orders`; `is_vip` and `promised_at` are optional:
 
 ### Error codes
 
-Every 4xx response has the body `{ "error": { "code": "...", "message": "..." } }`. The codes are stable.
+Every error from the routes above has the body `{ "error": { "code": "...", "message": "..." } }`. The codes are stable. A path that matches no route gets the default Express 404 page.
 
 | HTTP status | Code | When |
 | --- | --- | --- |
-| 400 | `VALIDATION_ERROR` | `:id` is not a positive integer; `?status` is not `received` or `preparing`; or the body of `POST /orders` is invalid (empty `items`, unknown `menu_item_id`, `quantity` not a positive integer, invalid field) |
+| 400 | `VALIDATION_ERROR` | `:id` is not a positive integer; `?status` is not `received` or `preparing`; or the body of `POST /orders` is invalid (not valid JSON or too large, empty `items`, unknown `menu_item_id`, `quantity` not a positive integer, invalid field); or the URL is malformed |
 | 404 | `ORDER_NOT_FOUND` | No order has this id |
 | 409 | `INVALID_TRANSITION` | The order's current status does not allow the action: a skipped step, a repeated action, a terminal order, or a status that changed during the request |
 
@@ -97,7 +97,9 @@ Business rules live only in `api/src/module`. Each rule has one rules file (data
 | Ranking: a type weight, the VIP bonus, a cap or step of wait time or complexity, a promised-time bucket, the tie-break order | `api/src/module/priority.rules.js` | `api/src/module/priority.test.js` |
 | Status: add, remove or redirect a transition; change which statuses are in the active queue | `api/src/module/status.rules.js` | `api/src/module/transitions.test.js` |
 
-Nothing else needs to change for these. The routes are generated from the transition table, and the web app renders the buttons listed in each order's `allowed_actions`, so a new transition gets its route and its button with no edit in the endpoint or in `web/`.
+For these changes nothing else needs to change. The routes are generated from the transition table, and the web app renders the buttons listed in each order's `allowed_actions`, so a new transition gets its route and its button with no edit in the endpoint or in `web/`.
+
+Two limits. A rule that needs logic the tables do not describe yet (for example a bonus for one menu category) also changes `priority.js` or `transitions.js`, still inside the Module. And `web/src/format.ts` holds display labels only: a new action, status or type works without it and shows its API name until a label is added.
 
 ## Project layout
 
@@ -109,6 +111,7 @@ api/src/
   repository/       Sequelize queries
   schema/           models, migrations, seed
 web/src/            one page: fetch the queue, render it in API order, post actions
+e2e/                Playwright end-to-end test; playwright.config.ts is at the root
 ai-logs/            AI conversation history and planning artifacts
 docs/               the take-home brief
 ```

@@ -18,7 +18,7 @@ function createOrdersEndpoint(ordersModule) {
     res.json(await ordersModule.getQueue({ status: req.query.status }));
   });
 
-  // One POST /orders/:id/<action> per action of the transition table: start, cancel, ready, pickup.
+  // One POST /orders/:id/<action> per action of the transition table.
   for (const action of ordersModule.actions) {
     router.post(`/orders/:id/${action}`, async (req, res) => {
       res.json(await ordersModule.applyAction(req.params.id, action));
