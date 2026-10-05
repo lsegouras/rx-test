@@ -46,15 +46,13 @@ If `start` is requested for an order that is already `preparing`, the Module rej
 
 ## AI
 
-## AI
-
 One AI suggestion I kept was: “Scope the ambient-clock check to the entire Module layer.”
 
 I initially considered restricting this check only to `computePriority` and its tests. I kept the broader suggestion because request-time business logic should not read the system clock directly. The Module receives time through the injected clock, keeping priority calculation, `minutes_waiting`, and tests deterministic and consistent. The seed is intentionally excluded because the exercise requires its dates to be relative to the real UTC time when it runs.
 
-One AI suggestion I rejected and rewrote was: “Reduce five minutes from the Priority task to create more time-box slack.”
+One AI suggestion I rejected and rewrote was: “Keep the transition rules and transition behavior together in `transitions.js`, with the STATUS change marker also appearing in the higher-level orders module test.”
 
-I agreed with the goal of leaving more execution time inside the four-hour limit, but I did not agree with taking that time from the priority work. Ranking is one of the main evaluation areas of the exercise and contains several boundary conditions, caps, worked examples, and tie-break rules that need careful implementation and testing. I kept the Priority task at 25 minutes and accepted a 175-minute core estimate instead of reducing time from one of the highest-risk parts of the implementation.
+I rewrote that structure because the exercise explicitly evaluates how quickly a ranking or status rule can be changed during the live panel. I moved the declarative state-machine data and active-queue statuses into `status.rules.js`, kept transition behavior in `transitions.js`, and limited the primary `@rule-change STATUS` surface to the rules file and its dedicated transition test. Higher-level module tests still verify queue behavior, but they do not become another place that must be edited for a normal status-rule change. This keeps the state machine easier to find, explain, test, and modify locally.
 
 ## Next
 
